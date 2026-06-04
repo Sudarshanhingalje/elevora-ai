@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Elevora AI",
+    "slug": "elevora-ai",
+    "scheme": "elevoraai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.elevora.mobile"
+    },
+    "android": {
+      "package": "ai.elevora.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080"
+    }
+  }
+}

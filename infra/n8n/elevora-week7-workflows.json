@@ -1,0 +1,165 @@
+{
+  "workflows": [
+    {
+      "name": "Elevora WhatsApp Membership Reminder",
+      "active": false,
+      "nodes": [
+        {
+          "parameters": {
+            "path": "elevora-whatsapp-reminder",
+            "httpMethod": "POST",
+            "responseMode": "lastNode"
+          },
+          "id": "webhook-whatsapp-reminder",
+          "name": "Webhook - WhatsApp Reminder",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2,
+          "position": [240, 300]
+        },
+        {
+          "parameters": {
+            "url": "={{$env.WHATSAPP_GRAPH_BASE_URL + '/' + $env.WHATSAPP_BUSINESS_PHONE_NUMBER_ID + '/messages'}}",
+            "authentication": "predefinedCredentialType",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "={{'Bearer ' + $env.WHATSAPP_ACCESS_TOKEN}}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "sendBody": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "messaging_product",
+                  "value": "whatsapp"
+                },
+                {
+                  "name": "to",
+                  "value": "={{$json.payload.phone}}"
+                },
+                {
+                  "name": "type",
+                  "value": "text"
+                },
+                {
+                  "name": "text",
+                  "value": "={{ { body: $json.payload.message, preview_url: false } }}"
+                }
+              ]
+            }
+          },
+          "id": "send-whatsapp",
+          "name": "Send WhatsApp",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4,
+          "position": [520, 300]
+        }
+      ],
+      "connections": {
+        "Webhook - WhatsApp Reminder": {
+          "main": [
+            [
+              {
+                "node": "Send WhatsApp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Elevora CRM Email Follow-up",
+      "active": false,
+      "nodes": [
+        {
+          "parameters": {
+            "path": "elevora-crm-email",
+            "httpMethod": "POST",
+            "responseMode": "lastNode"
+          },
+          "id": "webhook-crm-email",
+          "name": "Webhook - CRM Email",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2,
+          "position": [240, 620]
+        },
+        {
+          "parameters": {
+            "fromEmail": "={{$env.MAIL_FROM}}",
+            "toEmail": "={{$json.payload.email}}",
+            "subject": "={{$json.payload.subject}}",
+            "text": "={{$json.payload.message}}"
+          },
+          "id": "send-email",
+          "name": "Send CRM Email",
+          "type": "n8n-nodes-base.emailSend",
+          "typeVersion": 2,
+          "position": [520, 620]
+        }
+      ],
+      "connections": {
+        "Webhook - CRM Email": {
+          "main": [
+            [
+              {
+                "node": "Send CRM Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Elevora CRM Sync",
+      "active": false,
+      "nodes": [
+        {
+          "parameters": {
+            "path": "elevora-crm-sync",
+            "httpMethod": "POST",
+            "responseMode": "lastNode"
+          },
+          "id": "webhook-crm-sync",
+          "name": "Webhook - CRM Sync",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2,
+          "position": [240, 940]
+        },
+        {
+          "parameters": {
+            "jsCode": "return [{ json: { ok: true, syncedAt: new Date().toISOString(), lead: $json.payload } }];"
+          },
+          "id": "crm-sync-transform",
+          "name": "CRM Sync Transform",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [520, 940]
+        }
+      ],
+      "connections": {
+        "Webhook - CRM Sync": {
+          "main": [
+            [
+              {
+                "node": "CRM Sync Transform",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}
