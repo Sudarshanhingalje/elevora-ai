@@ -26,6 +26,7 @@ import UserSettings from "./pages/UserSettings.jsx";
 import NotificationsPanel from "./pages/NotificationsPanel.jsx";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard.jsx";
 import MarketplaceCategory from "./pages/MarketplaceCategory.jsx";
+import CookieConsent from "./components/common/CookieConsent.jsx";
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CookieConsent />
     </div>
   );
 }

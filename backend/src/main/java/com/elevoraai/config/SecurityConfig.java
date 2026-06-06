@@ -40,7 +40,9 @@ public class SecurityConfig {
 
     private static final List<String> ALLOWED_ORIGINS = List.of(
             "https://elevora.ai",
-            "http://localhost:3000");
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:5174");
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final String configuredCorsOrigins;
@@ -65,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/internal/**",   // n8n callbacks — auth via X-Callback-Secret header
                                 "/actuator/health",
                                 "/actuator/info").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")

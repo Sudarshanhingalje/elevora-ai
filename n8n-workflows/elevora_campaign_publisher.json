@@ -1,0 +1,643 @@
+[
+  {
+    "name": "Elevora Campaign Publisher",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "elevora-campaign-publisher",
+          "responseMode": "onReceived",
+          "options": {}
+        },
+        "id": "webhook-trigger",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          240,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ received: true, postId: $json.body.postId }) }}",
+          "options": {}
+        },
+        "id": "webhook-respond",
+        "name": "Respond 200 OK",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          460,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $json.body.imagePrompt }}",
+                "operation": "isNotEmpty"
+              }
+            ]
+          }
+        },
+        "id": "if-image-prompt",
+        "name": "Has Image Prompt?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          460,
+          420
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.COMFYUI_BASE_URL }}/prompt",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "prompt",
+                "value": "={{ JSON.stringify({ \"3\": { \"inputs\": { \"seed\": Math.floor(Math.random()*999999), \"steps\": 20, \"cfg\": 7, \"sampler_name\": \"euler\", \"scheduler\": \"normal\", \"denoise\": 1, \"model\": [\"4\",0], \"positive\": [\"6\",0], \"negative\": [\"7\",0], \"latent_image\": [\"5\",0] }, \"class_type\": \"KSampler\" }, \"4\": { \"inputs\": { \"ckpt_name\": \"v1-5-pruned-emaonly.ckpt\" }, \"class_type\": \"CheckpointLoaderSimple\" }, \"5\": { \"inputs\": { \"width\": 1080, \"height\": 1080, \"batch_size\": 1 }, \"class_type\": \"EmptyLatentImage\" }, \"6\": { \"inputs\": { \"text\": $('Webhook').item.json.body.imagePrompt + \", marketing poster, professional, high quality, 4k\", \"clip\": [\"4\",1] }, \"class_type\": \"CLIPTextEncode\" }, \"7\": { \"inputs\": { \"text\": \"blurry, low quality, text, watermark\", \"clip\": [\"4\",1] }, \"class_type\": \"CLIPTextEncode\" }, \"8\": { \"inputs\": { \"samples\": [\"3\",0], \"vae\": [\"4\",2] }, \"class_type\": \"VAEDecode\" }, \"9\": { \"inputs\": { \"filename_prefix\": \"elevora_\" + $('Webhook').item.json.body.postId, \"images\": [\"8\",0] }, \"class_type\": \"SaveImage\" } }) }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "comfyui-queue",
+        "name": "ComfyUI — Queue Prompt",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          680,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "amount": 35,
+          "unit": "seconds"
+        },
+        "id": "wait-comfyui",
+        "name": "Wait 35s for Generation",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [
+          900,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.COMFYUI_BASE_URL }}/history/{{ $('ComfyUI — Queue Prompt').item.json.prompt_id }}",
+          "options": {}
+        },
+        "id": "comfyui-history",
+        "name": "ComfyUI — Get History",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          1120,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.COMFYUI_BASE_URL }}/view?filename={{ Object.values(Object.values($json)[0].outputs)[0].images[0].filename }}&subfolder=&type=output",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file"
+              }
+            }
+          }
+        },
+        "id": "comfyui-download",
+        "name": "ComfyUI — Download Image",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          1340,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "={{ $env.MINIO_ENDPOINT }}/{{ $env.MINIO_BUCKET }}/campaign-images/{{ Object.values(Object.values($('ComfyUI — Get History').item.json)[0].outputs)[0].images[0].filename }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "image/png"
+              },
+              {
+                "name": "x-amz-acl",
+                "value": "public-read"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "binaryData",
+          "inputDataFieldName": "data",
+          "options": {
+            "allowUnauthorizedCerts": true,
+            "batching": {
+              "batch": {
+                "batchSize": 1,
+                "batchInterval": 0
+              }
+            }
+          }
+        },
+        "id": "minio-upload",
+        "name": "MinIO — Upload Image",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          1580,
+          340
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "minio-auth",
+            "name": "MinIO Auth"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $('Webhook').item.json.body.platforms }}",
+                "operation": "contains",
+                "value2": "Instagram"
+              },
+              {
+                "value1": "={{ $('Webhook').item.json.body.imagePrompt }}",
+                "operation": "isNotEmpty"
+              }
+            ]
+          }
+        },
+        "id": "if-instagram",
+        "name": "Post to Instagram?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          2020,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "image_url",
+                "value": "={{ $env.MINIO_ENDPOINT }}/{{ $env.MINIO_BUCKET }}/campaign-images/{{ Object.values(Object.values($('ComfyUI — Get History').item.json)[0].outputs)[0].images[0].filename }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $('Webhook').item.json.body.content + '\\n\\n' + ($('Webhook').item.json.body.hashtags || '') }}"
+              },
+              {
+                "name": "access_token",
+                "value": "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "instagram-create-container",
+        "name": "Instagram — Create Media Container",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          2240,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media_publish",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              },
+              {
+                "name": "access_token",
+                "value": "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "instagram-publish",
+        "name": "Instagram — Publish",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          2460,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $('Webhook').item.json.body.platforms }}",
+                "operation": "contains",
+                "value2": "Facebook"
+              }
+            ]
+          }
+        },
+        "id": "if-facebook",
+        "name": "Post to Facebook?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          2680,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.facebook.com/v19.0/{{ $env.FACEBOOK_PAGE_ID }}/photos",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "url",
+                "value": "={{ $env.MINIO_ENDPOINT }}/{{ $env.MINIO_BUCKET }}/campaign-images/{{ Object.values(Object.values($('ComfyUI — Get History').item.json)[0].outputs)[0].images[0].filename }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $('Webhook').item.json.body.content + '\\n\\n' + ($('Webhook').item.json.body.hashtags || '') }}"
+              },
+              {
+                "name": "access_token",
+                "value": "={{ $env.FACEBOOK_PAGE_ACCESS_TOKEN }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "facebook-post",
+        "name": "Facebook — Post Photo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          2900,
+          220
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $('Webhook').item.json.body.callbackUrl }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Callback-Secret",
+                "value": "={{ $('Webhook').item.json.body.callbackSecret }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "POSTED"
+              },
+              {
+                "name": "generatedImageUrl",
+                "value": "={{ $env.MINIO_ENDPOINT }}/{{ $env.MINIO_BUCKET }}/campaign-images/{{ Object.values(Object.values($('ComfyUI — Get History').item.json)[0].outputs)[0].images[0].filename }}"
+              }
+            ]
+          },
+          "options": {
+            "allowUnauthorizedCerts": true
+          }
+        },
+        "id": "callback-success",
+        "name": "Spring — Callback POSTED",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          3120,
+          340
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $('Webhook').item.json.body.callbackUrl }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Callback-Secret",
+                "value": "={{ $('Webhook').item.json.body.callbackSecret }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "FAILED"
+              },
+              {
+                "name": "errorMessage",
+                "value": "={{ $json.message || $json.errorMessage || 'Campaign posting failed (check image prompt or logs)' }}"
+              }
+            ]
+          },
+          "options": {
+            "allowUnauthorizedCerts": true
+          }
+        },
+        "id": "callback-failed",
+        "name": "Spring — Callback FAILED",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          3120,
+          520
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "error-trigger",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          2900,
+          520
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Respond 200 OK",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Has Image Prompt?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Image Prompt?": {
+        "main": [
+          [
+            {
+              "node": "ComfyUI — Queue Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Spring — Callback FAILED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "ComfyUI — Queue Prompt": {
+        "main": [
+          [
+            {
+              "node": "Wait 35s for Generation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 35s for Generation": {
+        "main": [
+          [
+            {
+              "node": "ComfyUI — Get History",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "ComfyUI — Get History": {
+        "main": [
+          [
+            {
+              "node": "ComfyUI — Download Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "ComfyUI — Download Image": {
+        "main": [
+          [
+            {
+              "node": "MinIO — Upload Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MinIO — Upload Image": {
+        "main": [
+          [
+            {
+              "node": "Post to Instagram?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Post to Instagram?": {
+        "main": [
+          [
+            {
+              "node": "Instagram — Create Media Container",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Post to Facebook?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Instagram — Create Media Container": {
+        "main": [
+          [
+            {
+              "node": "Instagram — Publish",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Instagram — Publish": {
+        "main": [
+          [
+            {
+              "node": "Post to Facebook?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Post to Facebook?": {
+        "main": [
+          [
+            {
+              "node": "Facebook — Post Photo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Spring — Callback POSTED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Facebook — Post Photo": {
+        "main": [
+          [
+            {
+              "node": "Spring — Callback POSTED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Spring — Callback FAILED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner"
+    },
+    "staticData": null,
+    "meta": {
+      "instanceId": "elevora-ai"
+    },
+    "pinData": {},
+    "active": true,
+    "versionId": "2",
+    "triggerCount": 0,
+    "tags": [
+      {
+        "createdAt": "2026-06-05",
+        "updatedAt": "2026-06-05",
+        "id": "elevora-campaigns",
+        "name": "Elevora Campaigns"
+      }
+    ],
+    "id": "D24qIuye3CQNnOdx"
+  }
+]

@@ -188,7 +188,11 @@ public class AuthController {
             @Pattern(
                     regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$",
                     message = "Password must include uppercase, lowercase, number, and special character")
-            String password) {
+            String password,
+
+            @jakarta.validation.constraints.NotNull(message = "You must agree to the Privacy Policy and Terms to continue.")
+            @jakarta.validation.constraints.AssertTrue(message = "You must agree to the Privacy Policy and Terms to continue.")
+            Boolean agreedToTerms) {
     }
 
     public record LoginRequest(

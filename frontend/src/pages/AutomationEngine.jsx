@@ -14,7 +14,7 @@ import { apiRequest } from "../services/api.js";
 // ─── Color helpers ────────────────────────────────────────────────────────────
 const TYPE_META = {
   WHATSAPP_REMINDER:  { color: "#25D366", bg: "rgba(37,211,102,0.12)",  icon: MessageCircle, label: "WhatsApp" },
-  EMAIL_FOLLOW_UP:    { color: "#6366F1", bg: "rgba(99,102,241,0.12)",  icon: Mail,          label: "Email"     },
+  EMAIL_FOLLOWUP:     { color: "#6366F1", bg: "rgba(99,102,241,0.12)",  icon: Mail,          label: "Email"     },
   CRM_SYNC:           { color: "#22D3EE", bg: "rgba(34,211,238,0.12)",  icon: RefreshCw,     label: "CRM Sync"  },
   WEBHOOK:            { color: "#F59E0B", bg: "rgba(245,158,11,0.12)",  icon: Globe,         label: "Webhook"   },
 };

@@ -1,0 +1,824 @@
+[
+    {
+        "name":  "Elevora Campaign Publisher",
+        "nodes":  [
+                      {
+                          "parameters":  {
+                                             "httpMethod":  "POST",
+                                             "path":  "elevora-campaign-publisher",
+                                             "responseMode":  "responseNode",
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "webhook-trigger",
+                          "name":  "Webhook â€” Receive Post Data",
+                          "type":  "n8n-nodes-base.webhook",
+                          "typeVersion":  1,
+                          "position":  [
+                                           240,
+                                           320
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "respondWith":  "json",
+                                             "responseBody":  "={{ JSON.stringify({ received: true, postId: $json.body.postId }) }}",
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "webhook-respond",
+                          "name":  "Respond 200 OK",
+                          "type":  "n8n-nodes-base.respondToWebhook",
+                          "typeVersion":  1,
+                          "position":  [
+                                           460,
+                                           200
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "conditions":  {
+                                                                "string":  [
+                                                                               {
+                                                                                   "value1":  "={{ $json.body.imagePrompt }}",
+                                                                                   "operation":  "isNotEmpty"
+                                                                               }
+                                                                           ]
+                                                            }
+                                         },
+                          "id":  "if-image-prompt",
+                          "name":  "Has Image Prompt?",
+                          "type":  "n8n-nodes-base.if",
+                          "typeVersion":  1,
+                          "position":  [
+                                           460,
+                                           420
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "={{ $env.COMFYUI_BASE_URL }}/prompt",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "prompt",
+                                                                                           "value":  "={{ JSON.stringify({ \"3\": { \"inputs\": { \"seed\": Math.floor(Math.random()*999999), \"steps\": 20, \"cfg\": 7, \"sampler_name\": \"euler\", \"scheduler\": \"normal\", \"denoise\": 1, \"model\": [\"4\",0], \"positive\": [\"6\",0], \"negative\": [\"7\",0], \"latent_image\": [\"5\",0] }, \"class_type\": \"KSampler\" }, \"4\": { \"inputs\": { \"ckpt_name\": \"v1-5-pruned-emaonly.ckpt\" }, \"class_type\": \"CheckpointLoaderSimple\" }, \"5\": { \"inputs\": { \"width\": 1080, \"height\": 1080, \"batch_size\": 1 }, \"class_type\": \"EmptyLatentImage\" }, \"6\": { \"inputs\": { \"text\": $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.imagePrompt + \", marketing poster, professional, high quality, 4k\", \"clip\": [\"4\",1] }, \"class_type\": \"CLIPTextEncode\" }, \"7\": { \"inputs\": { \"text\": \"blurry, low quality, text, watermark\", \"clip\": [\"4\",1] }, \"class_type\": \"CLIPTextEncode\" }, \"8\": { \"inputs\": { \"samples\": [\"3\",0], \"vae\": [\"4\",2] }, \"class_type\": \"VAEDecode\" }, \"9\": { \"inputs\": { \"filename_prefix\": \"elevora_\" + $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.postId, \"images\": [\"8\",0] }, \"class_type\": \"SaveImage\" } }) }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "comfyui-queue",
+                          "name":  "ComfyUI â€” Queue Prompt",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           680,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "amount":  35,
+                                             "unit":  "seconds"
+                                         },
+                          "id":  "wait-comfyui",
+                          "name":  "Wait 35s for Generation",
+                          "type":  "n8n-nodes-base.wait",
+                          "typeVersion":  1,
+                          "position":  [
+                                           900,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "GET",
+                                             "url":  "={{ $env.COMFYUI_BASE_URL }}/history/{{ $(\u0027ComfyUI â€” Queue Prompt\u0027).item.json.prompt_id }}",
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "comfyui-history",
+                          "name":  "ComfyUI â€” Get History",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           1120,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "GET",
+                                             "url":  "={{ $env.COMFYUI_BASE_URL }}/view?filename={{ Object.values(Object.values($json)[0].outputs)[0].images[0].filename }}\u0026subfolder=\u0026type=output",
+                                             "options":  {
+                                                             "response":  {
+                                                                              "response":  {
+                                                                                               "responseFormat":  "file"
+                                                                                           }
+                                                                          }
+                                                         }
+                                         },
+                          "id":  "comfyui-download",
+                          "name":  "ComfyUI â€” Download Image",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           1340,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "assignments":  {
+                                                                 "assignments":  [
+                                                                                     {
+                                                                                         "id":  "filename-assign",
+                                                                                         "name":  "filename",
+                                                                                         "value":  "={{ \u0027campaign_post_\u0027 + $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.postId + \u0027_\u0027 + Date.now() + \u0027.png\u0027 }}",
+                                                                                         "type":  "string"
+                                                                                     }
+                                                                                 ]
+                                                             },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "set-filename",
+                          "name":  "Set Filename",
+                          "type":  "n8n-nodes-base.set",
+                          "typeVersion":  3,
+                          "position":  [
+                                           1460,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "PUT",
+                                             "url":  "={{ $env.MINIO_ENDPOINT }}/{{ $env.MINIO_BUCKET }}/campaign-images/{{ $json.filename }}",
+                                             "authentication":  "genericCredentialType",
+                                             "genericAuthType":  "httpHeaderAuth",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "image/png"
+                                                                                         },
+                                                                                         {
+                                                                                             "name":  "x-amz-acl",
+                                                                                             "value":  "public-read"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "contentType":  "binaryData",
+                                             "inputDataFieldName":  "data",
+                                             "options":  {
+                                                             "allowUnauthorizedCerts":  true,
+                                                             "batching":  {
+                                                                              "batch":  {
+                                                                                            "batchSize":  1,
+                                                                                            "batchInterval":  0
+                                                                                        }
+                                                                          }
+                                                         }
+                                         },
+                          "id":  "minio-upload",
+                          "name":  "MinIO â€” Upload Image",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           1580,
+                                           340
+                                       ],
+                          "credentials":  {
+                                              "httpHeaderAuth":  {
+                                                                     "id":  "minio-auth",
+                                                                     "name":  "MinIO Auth"
+                                                                 }
+                                          }
+                      },
+                      {
+                          "parameters":  {
+                                             "assignments":  {
+                                                                 "assignments":  [
+                                                                                     {
+                                                                                         "id":  "img-url",
+                                                                                         "name":  "imageUrl",
+                                                                                         "value":  "={{ $env.MINIO_ENDPOINT + \u0027/\u0027 + $env.MINIO_BUCKET + \u0027/campaign-images/\u0027 + $(\u0027Set Filename\u0027).item.json.filename }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "post-caption",
+                                                                                         "name":  "caption",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.content + \u0027\\n\\n\u0027 + ($(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.hashtags || \u0027\u0027) }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "platforms",
+                                                                                         "name":  "platforms",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.platforms }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "post-id",
+                                                                                         "name":  "postId",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.postId }}",
+                                                                                         "type":  "number"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "callback-url",
+                                                                                         "name":  "callbackUrl",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackUrl }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "callback-secret",
+                                                                                         "name":  "callbackSecret",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackSecret }}",
+                                                                                         "type":  "string"
+                                                                                     }
+                                                                                 ]
+                                                             },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "set-image-url",
+                          "name":  "Set Image URL \u0026 Caption",
+                          "type":  "n8n-nodes-base.set",
+                          "typeVersion":  3,
+                          "position":  [
+                                           1800,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "assignments":  {
+                                                                 "assignments":  [
+                                                                                     {
+                                                                                         "id":  "no-img-url",
+                                                                                         "name":  "imageUrl",
+                                                                                         "value":  "",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "no-img-caption",
+                                                                                         "name":  "caption",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.content + \u0027\\n\\n\u0027 + ($(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.hashtags || \u0027\u0027) }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "no-img-platforms",
+                                                                                         "name":  "platforms",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.platforms }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "no-img-post-id",
+                                                                                         "name":  "postId",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.postId }}",
+                                                                                         "type":  "number"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "no-img-callback-url",
+                                                                                         "name":  "callbackUrl",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackUrl }}",
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                                     {
+                                                                                         "id":  "no-img-callback-secret",
+                                                                                         "name":  "callbackSecret",
+                                                                                         "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackSecret }}",
+                                                                                         "type":  "string"
+                                                                                     }
+                                                                                 ]
+                                                             },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "set-no-image",
+                          "name":  "Set Caption Only (No Image)",
+                          "type":  "n8n-nodes-base.set",
+                          "typeVersion":  3,
+                          "position":  [
+                                           680,
+                                           560
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "conditions":  {
+                                                                "string":  [
+                                                                               {
+                                                                                   "value1":  "={{ $json.platforms }}",
+                                                                                   "operation":  "contains",
+                                                                                   "value2":  "Instagram"
+                                                                               }
+                                                                           ]
+                                                            }
+                                         },
+                          "id":  "if-instagram",
+                          "name":  "Post to Instagram?",
+                          "type":  "n8n-nodes-base.if",
+                          "typeVersion":  1,
+                          "position":  [
+                                           2020,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "image_url",
+                                                                                           "value":  "={{ $json.imageUrl }}"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "caption",
+                                                                                           "value":  "={{ $json.caption }}"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "access_token",
+                                                                                           "value":  "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "instagram-create-container",
+                          "name":  "Instagram â€” Create Media Container",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           2240,
+                                           220
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media_publish",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "creation_id",
+                                                                                           "value":  "={{ $json.id }}"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "access_token",
+                                                                                           "value":  "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "instagram-publish",
+                          "name":  "Instagram â€” Publish",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           2460,
+                                           220
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "conditions":  {
+                                                                "string":  [
+                                                                               {
+                                                                                   "value1":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.platforms || $(\u0027Set Caption Only (No Image)\u0027).item.json.platforms }}",
+                                                                                   "operation":  "contains",
+                                                                                   "value2":  "Facebook"
+                                                                               }
+                                                                           ]
+                                                            }
+                                         },
+                          "id":  "if-facebook",
+                          "name":  "Post to Facebook?",
+                          "type":  "n8n-nodes-base.if",
+                          "typeVersion":  1,
+                          "position":  [
+                                           2680,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "=https://graph.facebook.com/v19.0/{{ $env.FACEBOOK_PAGE_ID }}/photos",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "url",
+                                                                                           "value":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.imageUrl || \u0027\u0027 }}"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "message",
+                                                                                           "value":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.caption || $(\u0027Set Caption Only (No Image)\u0027).item.json.caption }}"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "access_token",
+                                                                                           "value":  "={{ $env.FACEBOOK_PAGE_ACCESS_TOKEN }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+
+                                                         }
+                                         },
+                          "id":  "facebook-post",
+                          "name":  "Facebook â€” Post Photo",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           2900,
+                                           220
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.callbackUrl || $(\u0027Set Caption Only (No Image)\u0027).item.json.callbackUrl }}",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         },
+                                                                                         {
+                                                                                             "name":  "X-Callback-Secret",
+                                                                                             "value":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.callbackSecret || $(\u0027Set Caption Only (No Image)\u0027).item.json.callbackSecret }}"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "status",
+                                                                                           "value":  "POSTED"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "generatedImageUrl",
+                                                                                           "value":  "={{ $(\u0027Set Image URL \u0026 Caption\u0027).item.json.imageUrl || \u0027\u0027 }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+                                                             "allowUnauthorizedCerts":  true
+                                                         }
+                                         },
+                          "id":  "callback-success",
+                          "name":  "Spring â€” Callback POSTED",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           3120,
+                                           340
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+                                             "method":  "POST",
+                                             "url":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackUrl }}",
+                                             "sendHeaders":  true,
+                                             "headerParameters":  {
+                                                                      "parameters":  [
+                                                                                         {
+                                                                                             "name":  "Content-Type",
+                                                                                             "value":  "application/json"
+                                                                                         },
+                                                                                         {
+                                                                                             "name":  "X-Callback-Secret",
+                                                                                             "value":  "={{ $(\u0027Webhook â€” Receive Post Data\u0027).item.json.body.callbackSecret }}"
+                                                                                         }
+                                                                                     ]
+                                                                  },
+                                             "sendBody":  true,
+                                             "bodyParameters":  {
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "status",
+                                                                                           "value":  "FAILED"
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "errorMessage",
+                                                                                           "value":  "={{ $json.error?.message || $json.message || \u0027n8n workflow error\u0027 }}"
+                                                                                       }
+                                                                                   ]
+                                                                },
+                                             "options":  {
+                                                             "allowUnauthorizedCerts":  true
+                                                         }
+                                         },
+                          "id":  "callback-failed",
+                          "name":  "Spring â€” Callback FAILED",
+                          "type":  "n8n-nodes-base.httpRequest",
+                          "typeVersion":  4,
+                          "position":  [
+                                           3120,
+                                           520
+                                       ]
+                      },
+                      {
+                          "parameters":  {
+
+                                         },
+                          "id":  "error-trigger",
+                          "name":  "Error Trigger",
+                          "type":  "n8n-nodes-base.errorTrigger",
+                          "typeVersion":  1,
+                          "position":  [
+                                           2900,
+                                           520
+                                       ]
+                      }
+                  ],
+        "connections":  {
+                            "Webhook â€” Receive Post Data":  {
+                                                                  "main":  [
+                                                                               [
+                                                                                   {
+                                                                                       "node":  "Respond 200 OK",
+                                                                                       "type":  "main",
+                                                                                       "index":  0
+                                                                                   },
+                                                                                   {
+                                                                                       "node":  "Has Image Prompt?",
+                                                                                       "type":  "main",
+                                                                                       "index":  0
+                                                                                   }
+                                                                               ]
+                                                                           ]
+                                                              },
+                            "Has Image Prompt?":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "ComfyUI â€” Queue Prompt",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ],
+                                                                   [
+                                                                       {
+                                                                           "node":  "Set Caption Only (No Image)",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                            "ComfyUI â€” Queue Prompt":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Wait 35s for Generation",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                            "Wait 35s for Generation":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "ComfyUI â€” Get History",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                            "ComfyUI â€” Get History":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "ComfyUI â€” Download Image",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                            "ComfyUI â€” Download Image":  {
+                                                               "main":  [
+                                                                            [
+                                                                                {
+                                                                                    "node":  "Set Filename",
+                                                                                    "type":  "main",
+                                                                                    "index":  0
+                                                                                }
+                                                                            ]
+                                                                        ]
+                                                           },
+                            "Set Filename":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "MinIO â€” Upload Image",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                            "MinIO â€” Upload Image":  {
+                                                           "main":  [
+                                                                        [
+                                                                            {
+                                                                                "node":  "Set Image URL \u0026 Caption",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                       },
+                            "Set Image URL \u0026 Caption":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Post to Instagram?",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                            "Set Caption Only (No Image)":  {
+                                                                "main":  [
+                                                                             [
+                                                                                 {
+                                                                                     "node":  "Post to Instagram?",
+                                                                                     "type":  "main",
+                                                                                     "index":  0
+                                                                                 }
+                                                                             ]
+                                                                         ]
+                                                            },
+                            "Post to Instagram?":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Instagram â€” Create Media Container",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ],
+                                                                    [
+                                                                        {
+                                                                            "node":  "Post to Facebook?",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                            "Instagram â€” Create Media Container":  {
+                                                                         "main":  [
+                                                                                      [
+                                                                                          {
+                                                                                              "node":  "Instagram â€” Publish",
+                                                                                              "type":  "main",
+                                                                                              "index":  0
+                                                                                          }
+                                                                                      ]
+                                                                                  ]
+                                                                     },
+                            "Instagram â€” Publish":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "Post to Facebook?",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                            "Post to Facebook?":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Facebook â€” Post Photo",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ],
+                                                                   [
+                                                                       {
+                                                                           "node":  "Spring â€” Callback POSTED",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                            "Facebook â€” Post Photo":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Spring â€” Callback POSTED",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                            "Error Trigger":  {
+                                                  "main":  [
+                                                               [
+                                                                   {
+                                                                       "node":  "Spring â€” Callback FAILED",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ]
+                                                           ]
+                                              }
+                        },
+        "settings":  {
+                         "executionOrder":  "v1",
+                         "errorWorkflow":  "error-trigger",
+                         "saveManualExecutions":  true,
+                         "callerPolicy":  "workflowsFromSameOwner"
+                     },
+        "staticData":  null,
+        "meta":  {
+                     "instanceId":  "elevora-ai"
+                 },
+        "pinData":  {
+
+                    },
+        "versionId":  "2",
+        "triggerCount":  0,
+        "tags":  [
+                     {
+                         "createdAt":  "2026-06-05",
+                         "updatedAt":  "2026-06-05",
+                         "id":  "elevora-campaigns",
+                         "name":  "Elevora Campaigns"
+                     }
+                 ]
+    }
+]

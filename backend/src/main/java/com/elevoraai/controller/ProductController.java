@@ -18,9 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductController {
 
     private final ProductService productService;
+    private final com.elevoraai.service.ProductReviewService productReviewService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, com.elevoraai.service.ProductReviewService productReviewService) {
         this.productService = productService;
+        this.productReviewService = productReviewService;
+    }
+
+    @GetMapping("/reviews/public")
+    public List<com.elevoraai.service.ProductReviewService.ProductReviewResponse> listPublicReviews(
+            @RequestParam(defaultValue = "elevora-ai")
+            @jakarta.validation.constraints.Pattern(regexp = "^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+            String tenantSlug) {
+        return productReviewService.listPublicReviews(tenantSlug);
     }
 
     @GetMapping

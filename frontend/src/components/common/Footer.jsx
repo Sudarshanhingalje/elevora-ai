@@ -1,5 +1,5 @@
 const groups = [
-  ["About", "Mission", "Open source", "Security"],
+  ["About", "Mission", "Open source", "Security", "Cookie Settings"],
   ["Products", "Dental AI", "Gym AI", "CRM AI"],
   ["Pricing", "Starter", "Pro", "Enterprise"],
   ["Contact", "GitHub", "Docs", "Support"],
@@ -15,9 +15,18 @@ export default function Footer() {
             <ul className="mt-4 space-y-2 text-sm text-slate-400">
               {items.map((item) => (
                 <li key={item}>
-                  <a className="transition hover:text-white" href={item === "Docs" ? "/README.md" : "/"}>
-                    {item}
-                  </a>
+                  {item === "Cookie Settings" ? (
+                    <button
+                      onClick={() => window.dispatchEvent(new Event("elevora-open-cookie-settings"))}
+                      className="transition hover:text-white bg-transparent border-none p-0 cursor-pointer text-sm text-slate-450 text-left w-full"
+                    >
+                      Cookie Settings
+                    </button>
+                  ) : (
+                    <a className="transition hover:text-white" href={item === "Docs" ? "/README.md" : "/"}>
+                      {item}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

@@ -111,8 +111,8 @@ public class AuthService {
         try {
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO users (tenant_id, email, password_hash, role, otp_code, otp_expiry, is_verified) "
-                                + "VALUES (?, ?, ?, ?, ?, ?, false)",
+                        "INSERT INTO users (tenant_id, email, password_hash, role, otp_code, otp_expiry, is_verified, agreed_to_terms, terms_accepted_at) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, false, ?, ?)",
                         Statement.RETURN_GENERATED_KEYS);
                 ps.setLong(1, tenantId);
                 ps.setString(2, email);
@@ -120,6 +120,8 @@ public class AuthService {
                 ps.setString(4, USER_ROLE);
                 ps.setString(5, otpHash);
                 ps.setTimestamp(6, Timestamp.from(otpExpiry));
+                ps.setBoolean(7, request.agreedToTerms() != null && request.agreedToTerms());
+                ps.setTimestamp(8, Timestamp.from(Instant.now()));
                 return ps;
             }, keyHolder);
         } catch (DuplicateKeyException ex) {

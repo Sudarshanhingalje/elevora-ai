@@ -43,6 +43,12 @@ public class User {
     @Column(name = "is_verified", nullable = false)
     private boolean verified;
 
+    @Column(name = "agreed_to_terms", nullable = false)
+    private boolean agreedToTerms = false;
+
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -151,6 +157,22 @@ public class User {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isAgreedToTerms() {
+        return agreedToTerms;
+    }
+
+    public void setAgreedToTerms(boolean agreedToTerms) {
+        this.agreedToTerms = agreedToTerms;
+    }
+
+    public Instant getTermsAcceptedAt() {
+        return termsAcceptedAt;
+    }
+
+    public void setTermsAcceptedAt(Instant termsAcceptedAt) {
+        this.termsAcceptedAt = termsAcceptedAt;
     }
 
     @Override

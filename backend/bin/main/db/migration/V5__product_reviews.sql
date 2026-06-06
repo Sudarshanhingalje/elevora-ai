@@ -1,0 +1,20 @@
+CREATE TABLE product_reviews (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    rating TINYINT NOT NULL,
+    comment TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PUBLISHED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_product_reviews_tenant_id (tenant_id),
+    KEY idx_product_reviews_product_id (tenant_id, product_id),
+    KEY idx_product_reviews_user_id (tenant_id, user_id),
+    KEY idx_product_reviews_status (status),
+    CONSTRAINT fk_product_reviews_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    CONSTRAINT fk_product_reviews_product FOREIGN KEY (product_id) REFERENCES products(id),
+    CONSTRAINT fk_product_reviews_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT chk_product_reviews_rating CHECK (rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

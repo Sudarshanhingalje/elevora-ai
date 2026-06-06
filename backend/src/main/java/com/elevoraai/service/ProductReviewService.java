@@ -20,6 +20,30 @@ public class ProductReviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<ProductReviewResponse> listPublicReviews(String tenantSlug) {
+        Long tenantId = findTenantIdBySlug(tenantSlug);
+        return jdbcTemplate.query(
+                "SELECT r.id, r.tenant_id, r.product_id, r.user_id, u.email, r.rating, r.comment, r.created_at "
+                        + "FROM product_reviews r "
+                        + "JOIN users u ON u.tenant_id = r.tenant_id AND u.id = r.user_id "
+                        + "WHERE r.tenant_id = ? AND r.status = 'PUBLISHED' "
+                        + "ORDER BY r.created_at DESC, r.id DESC",
+                this::mapReview,
+                tenantId);
+    }
+
+    private Long findTenantIdBySlug(String slug) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT id FROM tenants WHERE slug = ? AND status = 'ACTIVE'",
+                    Long.class,
+                    slug.trim().toLowerCase());
+        } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
+            return 1L; // Fallback to tenant 1
+        }
+    }
+
+    @Transactional(readOnly = true)
     public List<ProductReviewResponse> listReviews(Long tenantId, String slug) {
         ProductService.ProductResponse product = productService.getActiveProductBySlugAndTenant(tenantId, slug);
         return jdbcTemplate.query(

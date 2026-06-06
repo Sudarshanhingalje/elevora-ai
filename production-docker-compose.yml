@@ -236,6 +236,16 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       OLLAMA_HOST: http://ollama:11434
+      # Gmail SMTP
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
+      # CORS
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://elevora.ai}
     ports:
       - "8080:8080"
     logging:

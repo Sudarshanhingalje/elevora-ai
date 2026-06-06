@@ -1,4 +1,4 @@
-﻿name: elevora-ai
+name: elevora-ai
 
 services:
   mysql:
@@ -121,22 +121,28 @@ services:
       N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
       WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
       GENERIC_TIMEZONE: ${TZ:-Asia/Kolkata}
+      # ComfyUI (running locally, reachable from Docker via host.docker.internal)
+      COMFYUI_BASE_URL: ${COMFYUI_BASE_URL:-http://host.docker.internal:8188}
+      # MinIO — use actual running credentials
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_BUCKET: ${MINIO_BUCKET:-elevora-assets}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-elevora_admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-Sudu@1308}
+      # Instagram Graph API
+      INSTAGRAM_BUSINESS_ACCOUNT_ID: ${INSTAGRAM_BUSINESS_ACCOUNT_ID}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN}
+      # Facebook Graph API
+      FACEBOOK_PAGE_ID: ${FACEBOOK_PAGE_ID:-}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${FACEBOOK_PAGE_ACCESS_TOKEN:-${INSTAGRAM_ACCESS_TOKEN}}
+      # Spring Boot callback
+      SPRING_BACKEND_URL: ${SPRING_BACKEND_URL:-http://host.docker.internal:8080}
+      N8N_CAMPAIGN_SECRET: ${N8N_CAMPAIGN_SECRET:-elevora-n8n-secret-change-me}
     ports:
       - "${N8N_PORT:-5678}:5678"
     volumes:
       - n8n_data:/home/node/.n8n
-    networks:
-      - elevora-internal
-
-  mailpit:
-    image: axllent/mailpit:v1.20
-    container_name: elevora-mailpit
-    restart: unless-stopped
-    environment:
-      TZ: ${TZ:-Asia/Kolkata}
-    ports:
-      - "${MAIL_SMTP_PORT:-1025}:1025"
-      - "${MAIL_WEB_PORT:-8025}:8025"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - elevora-internal
 

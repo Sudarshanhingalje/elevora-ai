@@ -1,7 +1,16 @@
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        classpath 'org.flywaydb:flyway-mysql:9.22.3'
+        classpath 'com.mysql:mysql-connector-j:8.0.33'
+    }
+}
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.2.12'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.flywaydb.flyway' version '9.22.3'
 }
 
 group = 'com.elevoraai'
@@ -43,4 +52,14 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// ── Flyway Gradle plugin config (for dev DB management) ──
+flyway {
+    url      = 'jdbc:mysql://localhost:3307/elevora_ai'
+    user     = 'elevora_app'
+    password = 'Sudu@1308'
+    schemas  = ['elevora_ai']
+    locations = ['classpath:db/migration']
+    cleanDisabled = false
 }

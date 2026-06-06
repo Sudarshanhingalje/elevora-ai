@@ -6,10 +6,12 @@ import {
   TrendingUp, FileText, BarChart2, Dumbbell,
   Briefcase, Zap, LifeBuoy, Bell, Settings,
   ShieldCheck, Users, Rocket, CheckCircle2, AlertCircle,
+  Plus, Calendar, Trash2, Edit, X, RefreshCw
 } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { toast } from "sonner";
 import WireNav from "../components/wire/WireNav.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.jsx";
 import { Button } from "../components/ui/button.jsx";
@@ -17,17 +19,18 @@ import { Button } from "../components/ui/button.jsx";
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 const ADMIN_NAV = [
-  { label: "Overview",        icon: BarChart2,  section: "overview"  },
-  { label: "Orders",          icon: Package,    section: "orders"    },
-  { label: "Revenue",         icon: TrendingUp, link: "/dashboard/revenue"   },
-  { label: "Reports",         icon: FileText,   link: "/admin/reports"       },
-  { label: "Growth Metrics",  icon: Activity,   link: "/dashboard/growth"    },
-  { label: "Analytics",       icon: BarChart2,  link: "/dashboard/analytics" },
-  { label: "Leads Generator", icon: Briefcase,  link: "/admin/leads-generator" },
-  { label: "Automation",      icon: Zap,        link: "/dashboard/automation"},
-  { label: "Support",         icon: LifeBuoy,   link: "/support"             },
-  { label: "Notifications",   icon: Bell,       link: "/notifications"       },
-  { label: "Settings",        icon: Settings,   link: "/settings"            },
+  { label: "Overview",          icon: BarChart2,  section: "overview"  },
+  { label: "Orders",            icon: Package,    section: "orders"    },
+  { label: "Social Campaigns",  icon: Rocket,     section: "campaigns" },
+  { label: "Revenue",           icon: TrendingUp, link: "/dashboard/revenue"   },
+  { label: "Reports",           icon: FileText,   link: "/admin/reports"       },
+  { label: "Growth Metrics",    icon: Activity,   link: "/dashboard/growth"    },
+  { label: "Analytics",         icon: BarChart2,  link: "/dashboard/analytics" },
+  { label: "Leads Generator",   icon: Briefcase,  link: "/admin/leads-generator" },
+  { label: "Automation",        icon: Zap,        link: "/dashboard/automation"},
+  { label: "Support",           icon: LifeBuoy,   link: "/support"             },
+  { label: "Notifications",     icon: Bell,       link: "/notifications"       },
+  { label: "Settings",          icon: Settings,   link: "/settings"            },
 ];
 
 export default function AdminDashboard() {
@@ -42,6 +45,23 @@ export default function AdminDashboard() {
   // Deploy state
   const [deployingId, setDeployingId]   = useState(null);
   const [deployToast, setDeployToast]   = useState(null);
+
+  // Social Campaigns State
+  const [campaignPosts, setCampaignPosts] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [editingCampaignPost, setEditingCampaignPost] = useState(null);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+
+  const [campaignForm, setCampaignForm] = useState({
+    campaign: "",
+    title: "",
+    content: "",
+    hashtags: "",
+    imagePrompt: "",
+    platforms: "Instagram, Facebook",
+    scheduleDatetime: "",
+  });
 
   useEffect(() => {
     fetch(`${apiBaseUrl}/api/dashboard/admin`, { credentials: "include" })
@@ -58,6 +78,24 @@ export default function AdminDashboard() {
       .finally(() => setLoadingOrders(false));
   }, [ordersPage]);
 
+  useEffect(() => {
+    if (active === "campaigns") {
+      fetchCampaignPosts();
+    }
+  }, [active]);
+
+  const fetchCampaignPosts = () => {
+    setLoadingCampaigns(true);
+    fetch(`${apiBaseUrl}/api/admin/campaign-posts`, { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch campaign posts");
+        return r.json();
+      })
+      .then((d) => setCampaignPosts(d || []))
+      .catch((err) => toast.error(err.message))
+      .finally(() => setLoadingCampaigns(false));
+  };
+
   async function handleDeploy(orderId) {
     setDeployingId(orderId);
     setDeployToast(null);
@@ -71,7 +109,6 @@ export default function AdminDashboard() {
         setDeployToast({ type: "error", msg: body.detail || body.message || "Deployment failed." });
       } else {
         setDeployToast({ type: "success", msg: body.message || "Deployment triggered! Client will receive an email when live." });
-        // Refresh orders list after deploy
         setLoadingOrders(true);
         fetch(`${apiBaseUrl}/api/dashboard/admin/orders?page=${ordersPage}&size=5`, { credentials: "include" })
           .then((r) => r.json())
@@ -85,6 +122,55 @@ export default function AdminDashboard() {
       setTimeout(() => setDeployToast(null), 5000);
     }
   }
+
+  // Handle Campaign Post Save (Create / Update)
+  const handleSaveCampaign = async (e) => {
+    e.preventDefault();
+    setSavingCampaign(true);
+    const url = editingCampaignPost 
+      ? `${apiBaseUrl}/api/admin/campaign-posts/${editingCampaignPost.id}`
+      : `${apiBaseUrl}/api/admin/campaign-posts`;
+    const method = editingCampaignPost ? "PUT" : "POST";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(campaignForm),
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.message || body.detail || "Failed to save campaign post.");
+      }
+      toast.success(editingCampaignPost ? "Campaign post updated!" : "Campaign post scheduled!");
+      setCampaignModalOpen(false);
+      fetchCampaignPosts();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingCampaign(false);
+    }
+  };
+
+  // Handle Campaign Delete
+  const handleDeleteCampaign = async (id) => {
+    if (!confirm("Are you sure you want to delete this campaign post?")) return;
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/admin/campaign-posts/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Failed to delete post.");
+      }
+      toast.success("Campaign post deleted.");
+      fetchCampaignPosts();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   const recentOrders = data?.recentOrders ?? [];
   const deployments  = data?.deployments  ?? [];
@@ -345,8 +431,265 @@ export default function AdminDashboard() {
               </Card>
             </>
           )}
+
+          {/* ── CAMPAIGNS section ── */}
+          {active === "campaigns" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Social Media Campaigns Scheduler</h2>
+                  <p className="text-slate-400 text-xs mt-1">
+                    Create marketing campaign posts for Facebook & Instagram with automated image generation.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={fetchCampaignPosts}
+                    variant="outline"
+                    className="border-slate-800 hover:bg-slate-800 flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={14} className={loadingCampaigns ? "animate-spin" : ""} />
+                    Refresh
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditingCampaignPost(null);
+                      setCampaignForm({
+                        campaign: "",
+                        title: "",
+                        content: "",
+                        hashtags: "",
+                        imagePrompt: "",
+                        platforms: "Instagram, Facebook",
+                        scheduleDatetime: "",
+                      });
+                      setCampaignModalOpen(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5"
+                  >
+                    <Plus size={16} />
+                    Schedule Campaign
+                  </Button>
+                </div>
+              </div>
+
+              <Card className="overflow-hidden border-slate-800">
+                <CardHeader>
+                  <CardTitle>All Scheduled Posts</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingCampaigns ? (
+                    <div className="py-12 text-center text-slate-400 animate-pulse">Loading posts...</div>
+                  ) : campaignPosts.length ? (
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-[#0B1121] text-xs uppercase tracking-wide text-slate-600">
+                        <tr>
+                          {["Campaign", "Title", "Content/Caption", "Platforms", "Image Prompt", "Schedule Time", "Status", "Actions"].map((h) => (
+                            <th className="px-5 py-3" key={h}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {campaignPosts.map((post) => {
+                          const statusColor = 
+                            post.status === "PUBLISHED" || post.status === "POSTED" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                            post.status === "FAILED" ? "bg-red-500/15 text-red-400 border-red-500/30" :
+                            "bg-amber-500/15 text-amber-400 border-amber-500/30";
+                          
+                          return (
+                            <tr className="border-t border-slate-900 hover:bg-slate-900/30 transition-colors" key={post.id}>
+                              <td className="px-5 py-4 font-bold">{post.campaign}</td>
+                              <td className="px-5 py-4">{post.title}</td>
+                              <td className="px-5 py-4 max-w-[200px] truncate">
+                                {post.content}
+                                {post.hashtags && <span className="block text-xs text-indigo-400 font-mono mt-0.5">{post.hashtags}</span>}
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className="inline-block rounded-full bg-slate-800 px-2 py-0.5 text-xs font-semibold">
+                                  {post.platforms}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 max-w-[150px] truncate italic text-slate-400 text-xs">
+                                {post.imagePrompt || "No prompt"}
+                              </td>
+                              <td className="px-5 py-4 text-xs font-mono text-slate-300">
+                                {post.scheduleDatetime ? new Date(post.scheduleDatetime).toLocaleString() : "N/A"}
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-bold ${statusColor}`}>
+                                  {post.status}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingCampaignPost(post);
+                                      const localDt = post.scheduleDatetime ? post.scheduleDatetime.substring(0, 16) : "";
+                                      setCampaignForm({
+                                        campaign: post.campaign,
+                                        title: post.title,
+                                        content: post.content,
+                                        hashtags: post.hashtags || "",
+                                        imagePrompt: post.imagePrompt || "",
+                                        platforms: post.platforms,
+                                        scheduleDatetime: localDt,
+                                      });
+                                      setCampaignModalOpen(true);
+                                    }}
+                                    className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCampaign(post.id)}
+                                    className="p-1.5 rounded bg-red-950/45 hover:bg-red-900 text-red-400 border border-red-500/20 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <Empty text="No scheduled campaign posts yet. Click 'Schedule Campaign' to create one." />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </section>
       </div>
+
+      {/* ── Scheduler Modal ── */}
+      {campaignModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#121824] p-6 shadow-2xl relative"
+          >
+            <button
+              onClick={() => setCampaignModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+            
+            <h3 className="font-['Space_Grotesk'] text-xl font-bold mb-4">
+              {editingCampaignPost ? "Edit Campaign Post" : "Schedule New Campaign Post"}
+            </h3>
+
+            <form onSubmit={handleSaveCampaign} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Campaign Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. New CRM AI Launch"
+                    value={campaignForm.campaign}
+                    onChange={(e) => setCampaignForm({...campaignForm, campaign: e.target.value})}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-red-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. CRM AI Launch"
+                    value={campaignForm.title}
+                    onChange={(e) => setCampaignForm({...campaignForm, title: e.target.value})}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-red-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Content / Caption</label>
+                <textarea
+                  required
+                  rows="3"
+                  placeholder="Caption text that will be published..."
+                  value={campaignForm.content}
+                  onChange={(e) => setCampaignForm({...campaignForm, content: e.target.value})}
+                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-red-500 outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Hashtags</label>
+                <input
+                  type="text"
+                  placeholder="e.g. #CRM #AI #Automation"
+                  value={campaignForm.hashtags}
+                  onChange={(e) => setCampaignForm({...campaignForm, hashtags: e.target.value})}
+                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-red-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Image Prompt (for ComfyUI)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Modern AI dashboard, blue theme, professional lighting"
+                  value={campaignForm.imagePrompt}
+                  onChange={(e) => setCampaignForm({...campaignForm, imagePrompt: e.target.value})}
+                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-red-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Platforms</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Instagram + Facebook"
+                    value={campaignForm.platforms}
+                    onChange={(e) => setCampaignForm({...campaignForm, platforms: e.target.value})}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Schedule Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={campaignForm.scheduleDatetime}
+                    onChange={(e) => setCampaignForm({...campaignForm, scheduleDatetime: e.target.value})}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCampaignModalOpen(false)}
+                  className="border-slate-800 hover:bg-slate-800"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savingCampaign}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
+                >
+                  {savingCampaign ? "Saving..." : (editingCampaignPost ? "Update Schedule" : "Schedule Post")}
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </main>
   );
 }
