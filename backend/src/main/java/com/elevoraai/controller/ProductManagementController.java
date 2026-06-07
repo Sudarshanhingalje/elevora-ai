@@ -37,6 +37,12 @@ public class ProductManagementController {
         return productManagementService.addProduct(principal, command);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping
+    public java.util.List<ProductResponse> listAllProducts(
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        return productManagementService.listAllProducts(principal);
+    }
+
     @PutMapping("/{productId}")
     public ProductResponse editProduct(
             @AuthenticationPrincipal JwtPrincipal principal,

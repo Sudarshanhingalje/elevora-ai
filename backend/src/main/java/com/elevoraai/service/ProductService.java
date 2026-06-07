@@ -155,6 +155,14 @@ public class ProductService {
         }
     }
 
+    public List<ProductResponse> listAllProductsForTenant(Long tenantId) {
+        return jdbcTemplate.query(
+                "SELECT id, tenant_id, name, slug, description, price, category, demo_url, docker_image, status, features, tech_stack, video_url, screenshots, deployment_template, repository_info, created_at "
+                        + "FROM products WHERE tenant_id = ? AND status != 'ARCHIVED' ORDER BY created_at DESC, id DESC",
+                this::mapProduct,
+                tenantId);
+    }
+
     public ProductResponse getProductById(Long tenantId, Long productId) {
         try {
             return jdbcTemplate.queryForObject(

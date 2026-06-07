@@ -10,6 +10,7 @@ export const products = [
     rating: "4.9",
     reviews: "28",
     accent: "emerald",
+    preview: "/assets/dentaiproduct.mp4",
   },
   {
     icon: "🏋️",
@@ -22,6 +23,7 @@ export const products = [
     rating: "4.8",
     reviews: "19",
     accent: "indigo",
+    preview: "/assets/dentaiproduct.mp4",
   },
   {
     icon: "📊",
@@ -34,6 +36,7 @@ export const products = [
     rating: "4.7",
     reviews: "31",
     accent: "amber",
+    preview: "/assets/dentaiproduct.mp4",
   },
   {
     icon: "🛒",
@@ -46,6 +49,7 @@ export const products = [
     rating: "4.8",
     reviews: "22",
     accent: "cyan",
+    preview: "/assets/dentaiproduct.mp4",
   },
   {
     icon: "🤖",
@@ -58,6 +62,7 @@ export const products = [
     rating: "4.6",
     reviews: "16",
     accent: "rose",
+    preview: "/assets/dentaiproduct.mp4",
   },
   {
     icon: "✍️",
@@ -70,6 +75,7 @@ export const products = [
     rating: "4.7",
     reviews: "18",
     accent: "violet",
+    preview: "/assets/dentaiproduct.mp4",
   },
 ];
 

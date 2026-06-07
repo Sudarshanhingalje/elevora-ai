@@ -56,4 +56,23 @@ public class EmailService {
             return false;
         }
     }
+
+    public boolean sendHtml(String to, String subject, String htmlContent) {
+        try {
+            log.info("Attempting to send HTML email to {} with subject: {}", to, subject);
+            jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
+            org.springframework.mail.javamail.MimeMessageHelper helper = 
+                    new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("HTML email successfully sent to {}", to);
+            return true;
+        } catch (Exception ex) {
+            log.error("SMTP HTML delivery FAILED to {}. Error: {}", to, ex.getMessage(), ex);
+            return false;
+        }
+    }
 }

@@ -26,7 +26,7 @@ public class UsageMetricsService {
      */
     public long activeUsers(Long tenantId) {
         Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT user_id) FROM user_activity_log "
+                "SELECT COUNT(DISTINCT user_id) FROM activity_logs "
                         + "WHERE tenant_id = ? AND created_at >= NOW() - INTERVAL 30 DAY",
                 Long.class, tenantId);
         return count == null ? 0L : count;
@@ -58,7 +58,7 @@ public class UsageMetricsService {
     public List<FeatureUsage> aiFeatureUsage(Long tenantId) {
         return jdbcTemplate.query(
                 "SELECT action AS feature, COUNT(*) AS invocations "
-                        + "FROM user_activity_log "
+                        + "FROM activity_logs "
                         + "WHERE tenant_id = ? AND created_at >= NOW() - INTERVAL 30 DAY "
                         + "GROUP BY action ORDER BY invocations DESC LIMIT 10",
                 this::mapFeatureUsage,
@@ -81,7 +81,7 @@ public class UsageMetricsService {
     public List<DailyActivity> dailyActivity(Long tenantId) {
         return jdbcTemplate.query(
                 "SELECT DATE(created_at) AS day, COUNT(*) AS events "
-                        + "FROM user_activity_log "
+                        + "FROM activity_logs "
                         + "WHERE tenant_id = ? AND created_at >= NOW() - INTERVAL 14 DAY "
                         + "GROUP BY DATE(created_at) "
                         + "ORDER BY day",

@@ -37,19 +37,48 @@ public class SupportTicketService {
         return findById(tenantId, ticketId);
     }
 
+    /** Returns only the requesting user's own tickets (customer view). */
     public List<TicketResponse> listTickets(Long tenantId, Long userId) {
         return jdbcTemplate.query(
-                "SELECT id, tenant_id, user_id, subject, description, priority, status, created_at, updated_at "
-                        + "FROM support_tickets WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC",
+                "SELECT t.id, t.tenant_id, t.user_id, u.email AS user_email, t.subject, t.description, t.priority, t.status, t.created_at, t.updated_at "
+                        + "FROM support_tickets t "
+                        + "JOIN users u ON u.id = t.user_id "
+                        + "WHERE t.tenant_id = ? AND t.user_id = ? ORDER BY t.created_at DESC",
                 this::mapTicket,
                 tenantId,
                 userId);
     }
 
+    /** Returns all tickets for a given tenant — used by admin per-tenant drill-down. */
+    public List<TicketResponse> listAllTicketsForTenant(Long tenantId) {
+        return jdbcTemplate.query(
+                "SELECT t.id, t.tenant_id, t.user_id, u.email AS user_email, t.subject, t.description, t.priority, t.status, t.created_at, t.updated_at "
+                        + "FROM support_tickets t "
+                        + "JOIN users u ON u.id = t.user_id "
+                        + "WHERE t.tenant_id = ? ORDER BY t.created_at DESC",
+                this::mapTicket,
+                tenantId);
+    }
+
+    /**
+     * Returns ALL tickets across every tenant — used by the Admin Dashboard Support tab.
+     * No tenant filter: admins see everything.
+     */
+    public List<TicketResponse> listAllTickets() {
+        return jdbcTemplate.query(
+                "SELECT t.id, t.tenant_id, t.user_id, u.email AS user_email, t.subject, t.description, t.priority, t.status, t.created_at, t.updated_at "
+                        + "FROM support_tickets t "
+                        + "JOIN users u ON u.id = t.user_id "
+                        + "ORDER BY t.created_at DESC",
+                this::mapTicket);
+    }
+
     public TicketResponse findById(Long tenantId, Long ticketId) {
         return jdbcTemplate.queryForObject(
-                "SELECT id, tenant_id, user_id, subject, description, priority, status, created_at, updated_at "
-                        + "FROM support_tickets WHERE tenant_id = ? AND id = ?",
+                "SELECT t.id, t.tenant_id, t.user_id, u.email AS user_email, t.subject, t.description, t.priority, t.status, t.created_at, t.updated_at "
+                        + "FROM support_tickets t "
+                        + "JOIN users u ON u.id = t.user_id "
+                        + "WHERE t.tenant_id = ? AND t.id = ?",
                 this::mapTicket,
                 tenantId,
                 ticketId);
@@ -65,11 +94,31 @@ public class SupportTicketService {
         return findById(tenantId, ticketId);
     }
 
+    /**
+     * Admin version of updateStatus — works on any ticket regardless of tenant.
+     */
+    @Transactional
+    public TicketResponse adminUpdateStatus(Long ticketId, String status) {
+        jdbcTemplate.update(
+                "UPDATE support_tickets SET status = ? WHERE id = ?",
+                status,
+                ticketId);
+        // Fetch back without tenant restriction
+        return jdbcTemplate.queryForObject(
+                "SELECT t.id, t.tenant_id, t.user_id, u.email AS user_email, t.subject, t.description, t.priority, t.status, t.created_at, t.updated_at "
+                        + "FROM support_tickets t "
+                        + "JOIN users u ON u.id = t.user_id "
+                        + "WHERE t.id = ?",
+                this::mapTicket,
+                ticketId);
+    }
+
     private TicketResponse mapTicket(ResultSet rs, int rowNum) throws SQLException {
         return new TicketResponse(
                 rs.getLong("id"),
                 rs.getLong("tenant_id"),
                 rs.getLong("user_id"),
+                rs.getString("user_email"),
                 rs.getString("subject"),
                 rs.getString("description"),
                 rs.getString("priority"),
@@ -81,6 +130,16 @@ public class SupportTicketService {
     public record CreateTicketRequest(String subject, String description, String priority) {
     }
 
-    public record TicketResponse(Long id, Long tenantId, Long userId, String subject, String description, String priority, String status, Instant createdAt, Instant updatedAt) {
+    public record TicketResponse(
+            Long id,
+            Long tenantId,
+            Long userId,
+            String userEmail,
+            String subject,
+            String description,
+            String priority,
+            String status,
+            Instant createdAt,
+            Instant updatedAt) {
     }
 }

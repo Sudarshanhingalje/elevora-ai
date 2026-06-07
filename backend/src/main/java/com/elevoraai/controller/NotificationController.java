@@ -28,4 +28,9 @@ public class NotificationController {
             @AuthenticationPrincipal JwtPrincipal principal) {
         return notificationService.listForUser(principal.tenantId(), principal.userId());
     }
+
+    @org.springframework.web.bind.annotation.PostMapping("/read")
+    public void markAllAsRead(@AuthenticationPrincipal JwtPrincipal principal) {
+        notificationService.markAllAsRead(principal.tenantId(), principal.userId());
+    }
 }

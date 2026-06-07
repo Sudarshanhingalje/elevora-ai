@@ -1,19 +1,50 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Star, Smile, Meh, Frown, CheckCircle2, Send } from "lucide-react";
+import { Star, Smile, Frown, CheckCircle2, Send, ThumbsUp } from "lucide-react";
 import WireNav from "../components/wire/WireNav.jsx";
 import { Card, CardContent } from "../components/ui/card.jsx";
 import { Button } from "../components/ui/button.jsx";
 import { apiRequest } from "../services/api.js";
 
-const NPS_LABELS = ["Very Unlikely", "", "", "", "", "Neutral", "", "", "", "", "Very Likely"];
+const QUALITY_LABELS = { 5: "Excellent", 4: "Great", 3: "Good", 2: "Fair", 1: "Poor" };
+
+function StarRatingRow({ label, value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+      <span className="text-sm text-slate-300">{label}</span>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(s)}
+            onMouseEnter={() => setHover(s)}
+            onMouseLeave={() => setHover(0)}
+            className="transition-transform hover:scale-110 focus:outline-none"
+          >
+            <Star
+              size={20}
+              className={(hover || value) >= s ? "fill-yellow-400 text-yellow-400" : "text-slate-700"}
+            />
+          </button>
+        ))}
+        <span className="ml-2 text-xs text-slate-500 w-16">{value ? QUALITY_LABELS[value] : ""}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function FeedbackForm() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [npsScore, setNpsScore] = useState(null);
-  const [category, setCategory] = useState("GENERAL");
+  const [category, setCategory] = useState("PROJECT");
   const [message, setMessage] = useState("");
+  const [solutionQuality, setSolutionQuality] = useState(0);
+  const [communication, setCommunication] = useState(0);
+  const [deliverySpeed, setDeliverySpeed] = useState(0);
+  const [recommend, setRecommend] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +60,17 @@ export default function FeedbackForm() {
     try {
       await apiRequest("/api/feedback", {
         method: "POST",
-        body: JSON.stringify({ rating, npsScore, category, message }),
+        body: JSON.stringify({
+          rating,
+          npsScore,
+          category,
+          message,
+          source: category,
+          solutionQuality: solutionQuality || null,
+          communication: communication || null,
+          deliverySpeed: deliverySpeed || null,
+          recommend: recommend || null,
+        }),
       });
       setSubmitted(true);
     } catch (err) {
@@ -54,10 +95,13 @@ export default function FeedbackForm() {
             </div>
             <h1 className="text-3xl font-black">Thank You!</h1>
             <p className="text-slate-400 max-w-md">
-              Your feedback helps us build better AI products for you and thousands of startups.
-              We'll review it and take action where we can.
+              Your feedback helps us build better AI products. We review every response and
+              continuously improve our delivery, communication, and solutions.
             </p>
-            <Button onClick={() => { setSubmitted(false); setRating(0); setNpsScore(null); setMessage(""); }}>
+            <Button onClick={() => {
+              setSubmitted(false); setRating(0); setNpsScore(null); setMessage("");
+              setSolutionQuality(0); setCommunication(0); setDeliverySpeed(0); setRecommend(0);
+            }}>
               Submit Another Response
             </Button>
           </motion.div>
@@ -112,25 +156,31 @@ export default function FeedbackForm() {
                     </button>
                   ))}
                   <span className="ml-3 text-sm text-slate-400">
-                    {rating === 5
-                      ? "Excellent!"
-                      : rating === 4
-                      ? "Great"
-                      : rating === 3
-                      ? "Okay"
-                      : rating === 2
-                      ? "Needs Work"
-                      : rating === 1
-                      ? "Very Poor"
-                      : "Select a rating"}
+                    {rating === 5 ? "Excellent!" : rating === 4 ? "Great" : rating === 3 ? "Okay" : rating === 2 ? "Needs Work" : rating === 1 ? "Very Poor" : "Select a rating"}
                   </span>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* NPS Score */}
+          {/* Project Quality Questions */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="border-slate-800 bg-[#1E293B]">
+              <CardContent className="p-6">
+                <h2 className="font-bold text-lg mb-1">Project Quality</h2>
+                <p className="text-sm text-slate-400 mb-5">
+                  Rate specific aspects of your experience with us. (Optional)
+                </p>
+                <StarRatingRow label="Quality of Solution" value={solutionQuality} onChange={setSolutionQuality} />
+                <StarRatingRow label="Communication" value={communication} onChange={setCommunication} />
+                <StarRatingRow label="Delivery Speed" value={deliverySpeed} onChange={setDeliverySpeed} />
+                <StarRatingRow label="Would You Recommend Us?" value={recommend} onChange={setRecommend} />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* NPS Score */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
             <Card className="border-slate-800 bg-[#1E293B]">
               <CardContent className="p-6">
                 <h2 className="font-bold text-lg mb-1">Net Promoter Score</h2>
@@ -163,12 +213,12 @@ export default function FeedbackForm() {
           </motion.div>
 
           {/* Category */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <Card className="border-slate-800 bg-[#1E293B]">
               <CardContent className="p-6">
                 <h2 className="font-bold text-lg mb-4">Feedback Category</h2>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {["GENERAL", "PERFORMANCE", "UI_UX", "BILLING", "SUPPORT", "FEATURE_REQUEST"].map((cat) => (
+                  {["PROJECT", "SUPPORT", "GENERAL", "PERFORMANCE", "UI_UX", "BILLING", "FEATURE_REQUEST"].map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -189,7 +239,7 @@ export default function FeedbackForm() {
           </motion.div>
 
           {/* Message */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
             <Card className="border-slate-800 bg-[#1E293B]">
               <CardContent className="p-6">
                 <h2 className="font-bold text-lg mb-1">Your Thoughts</h2>

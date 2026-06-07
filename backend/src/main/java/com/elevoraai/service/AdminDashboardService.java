@@ -116,11 +116,39 @@ public class AdminDashboardService {
             String deploymentUrl) {
     }
 
+    public List<RecentUser> getRecentUsers(JwtPrincipal principal) {
+        return jdbcTemplate.query(
+                "SELECT u.id, COALESCE(u.full_name, u.name, 'N/A') AS name, u.email, u.active, "
+                        + "(SELECT plan FROM subscriptions s WHERE s.tenant_id = u.tenant_id AND s.user_id = u.id ORDER BY s.start_date DESC LIMIT 1) AS plan, "
+                        + "COALESCE((SELECT SUM(o.amount) FROM orders o WHERE o.tenant_id = u.tenant_id AND o.user_id = u.id AND o.payment_status = 'PAID'), 0) AS spent "
+                        + "FROM users u "
+                        + "WHERE u.tenant_id = ? "
+                        + "ORDER BY u.id DESC "
+                        + "LIMIT 10",
+                (rs, row) -> new RecentUser(
+                        rs.getLong("id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getString("plan") != null ? rs.getString("plan") : "FREE",
+                        rs.getBigDecimal("spent"),
+                        rs.getBoolean("active")),
+                principal.tenantId());
+    }
+
     public record ActiveDeployment(
             Long id,
             String subdomain,
             String containerId,
             String status,
             String productName) {
+    }
+
+    public record RecentUser(
+            Long id,
+            String name,
+            String email,
+            String plan,
+            BigDecimal spent,
+            boolean active) {
     }
 }

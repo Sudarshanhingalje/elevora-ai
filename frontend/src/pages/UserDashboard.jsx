@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Package, Rocket, CreditCard, ShieldCheck,
-  Bell, Settings, LifeBuoy, BarChart2,
-  Dumbbell, Briefcase, Zap, ExternalLink,
+  Package, Rocket, CreditCard,
+  LifeBuoy, Settings, BarChart2, Star, ExternalLink,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import WireNav from "../components/wire/WireNav.jsx";
@@ -13,17 +12,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card.
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 const NAV_ITEMS = [
-  { id: "Orders",        icon: Package,   label: "My Orders"         },
-  { id: "Deployments",   icon: Rocket,    label: "Deployments"       },
-  { id: "Subscription",  icon: CreditCard,label: "Subscription"      },
-  { id: "Support",       icon: LifeBuoy,  label: "Support",    link: "/support"             },
-  { id: "Settings",      icon: Settings,  label: "Settings",   link: "/settings"            },
+  { id: "Orders",        icon: Package,    label: "My Orders"    },
+  { id: "Deployments",   icon: Rocket,     label: "Deployments"  },
+  { id: "Projects",      icon: BarChart2,  label: "My Projects"  },
+  { id: "Subscription",  icon: CreditCard, label: "Subscription" },
+  { id: "Support",       icon: LifeBuoy,   label: "Support",  link: "/support"  },
+  { id: "Settings",      icon: Settings,   label: "Settings", link: "/settings" },
+  { id: "Feedback",      icon: Star,       label: "Feedback", link: "/feedback" },
 ];
 
 export default function UserDashboard() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [active, setActive]   = useState("Orders");
+
 
   useEffect(() => {
     fetch(`${apiBaseUrl}/api/dashboard/me`, { credentials: "include" })
@@ -34,6 +36,7 @@ export default function UserDashboard() {
 
   const orders      = data?.activeOrders ?? [];
   const deployments = data?.deployments  ?? [];
+  const clientProjects = data?.clientProjects ?? [];
 
   return (
     <main className="flex min-h-screen flex-col bg-[#0F172A] text-white">
@@ -43,8 +46,11 @@ export default function UserDashboard() {
         {/* Sidebar */}
         <aside className="w-64 flex-shrink-0 border-r border-slate-800 bg-[#0B1121] p-4 flex flex-col gap-1">
           <div className="mb-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 p-4">
-            <p className="font-black text-sm">My Elevora</p>
-            <p className="mt-0.5 text-xs font-semibold text-indigo-300">{data?.role ?? "USER"} session</p>
+            <p className="font-black text-sm truncate">{data?.name || "My Elevora"}</p>
+            <p className="mt-0.5 text-xs text-slate-400 truncate">{data?.email || ""}</p>
+            <span className="mt-2 inline-block rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300 uppercase tracking-wide">
+              {data?.role ?? "USER"}
+            </span>
           </div>
 
           {NAV_ITEMS.map((item) => {
@@ -183,6 +189,54 @@ export default function UserDashboard() {
             </Card>
           )}
 
+          {/* Projects tab */}
+          {!loading && active === "Projects" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>My Active Projects</span>
+                  <Link to="/feedback" className="text-xs font-medium text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 bg-indigo-500/10 rounded-lg px-3 py-1.5 transition-colors">
+                    ★ Submit Feedback
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {clientProjects.length ? (
+                  <div className="divide-y divide-slate-800">
+                    {clientProjects.map(p => {
+                      const sc = p.status === "COMPLETED"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : p.status === "AT_RISK"
+                        ? "bg-red-500/10 text-red-400 border-red-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                      const barColor = p.status === "COMPLETED" ? "bg-emerald-500" : p.status === "AT_RISK" ? "bg-red-500" : "bg-indigo-500";
+                      return (
+                        <div key={p.id} className="p-6 flex items-center gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <p className="font-bold text-white">{p.projectName}</p>
+                              <span className={`text-[10px] font-bold uppercase border rounded-full px-2 py-0.5 ${sc}`}>
+                                {p.status?.replace("_", " ")}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-3">Due: {p.dueDate ? new Date(p.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBD"}</p>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className={`h-full ${barColor} transition-all`} style={{ width: `${p.progress}%` }} />
+                              </div>
+                              <span className="text-xs font-bold text-slate-300 w-10 text-right">{p.progress}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Empty text="No active projects assigned yet. Your project manager will add them here." />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
         </section>
       </div>

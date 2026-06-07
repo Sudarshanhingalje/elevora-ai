@@ -3,6 +3,7 @@ package com.elevoraai.controller;
 import com.elevoraai.config.SecurityConfig.JwtPrincipal;
 import com.elevoraai.service.AdminDashboardService;
 import com.elevoraai.service.AdminDashboardService.AdminDashboardData;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,5 +24,10 @@ public class AdminDashboardController {
     @GetMapping
     public AdminDashboardData getDashboardData(@AuthenticationPrincipal JwtPrincipal principal) {
         return adminDashboardService.getAdminDashboardData(principal);
+    }
+
+    @GetMapping("/recent-users")
+    public List<AdminDashboardService.RecentUser> getRecentUsers(@AuthenticationPrincipal JwtPrincipal principal) {
+        return adminDashboardService.getRecentUsers(principal);
     }
 }

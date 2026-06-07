@@ -22,11 +22,39 @@ public class DashboardService {
     }
 
     public UserDashboardResponse userDashboard(Long tenantId, Long userId, String role) {
+        String[] userInfo = fetchUserInfo(tenantId, userId);
         return new UserDashboardResponse(
                 role,
+                userInfo[0],  // name
+                userInfo[1],  // email
                 activeOrders(tenantId, userId),
                 currentSubscription(tenantId, userId).orElse(null),
-                deployedProducts(tenantId, userId));
+                deployedProducts(tenantId, userId),
+                clientProjects(tenantId));
+    }
+
+    private String[] fetchUserInfo(Long tenantId, Long userId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(full_name, name, email) AS display_name, email FROM users WHERE tenant_id = ? AND id = ?",
+                    (rs, rowNum) -> new String[]{ rs.getString("display_name"), rs.getString("email") },
+                    tenantId, userId);
+        } catch (Exception e) {
+            return new String[]{ "User", "" };
+        }
+    }
+
+    private List<ClientProjectSummary> clientProjects(Long tenantId) {
+        return jdbcTemplate.query(
+                "SELECT id, client_name, project_name, progress, due_date, status FROM client_projects WHERE tenant_id = ? ORDER BY id DESC",
+                (rs, rowNum) -> new ClientProjectSummary(
+                        rs.getLong("id"),
+                        rs.getString("client_name"),
+                        rs.getString("project_name"),
+                        rs.getInt("progress"),
+                        rs.getDate("due_date").toLocalDate(),
+                        rs.getString("status")),
+                tenantId);
     }
 
     public AdminDashboardResponse adminDashboard(Long tenantId, String role) {
@@ -42,9 +70,10 @@ public class DashboardService {
     private List<OrderSummary> activeOrders(Long tenantId, Long userId) {
         return jdbcTemplate.query(
                 "SELECT o.id, p.name AS product_name, o.amount, o.currency, o.payment_status, o.status, "
-                        + "o.deployment_url, d.subdomain, d.deployed_at "
+                        + "o.deployment_url, d.subdomain, d.deployed_at, COALESCE(u.full_name, u.name, 'N/A') AS client_name, u.email AS client_email "
                         + "FROM orders o "
                         + "JOIN products p ON p.tenant_id = o.tenant_id AND p.id = o.product_id "
+                        + "JOIN users u ON u.id = o.user_id "
                         + "LEFT JOIN deployments d ON d.tenant_id = o.tenant_id AND d.order_id = o.id "
                         + "WHERE o.tenant_id = ? AND o.user_id = ? "
                         + "ORDER BY o.updated_at DESC, o.id DESC",
@@ -109,9 +138,10 @@ public class DashboardService {
     private List<OrderSummary> recentOrders(Long tenantId) {
         return jdbcTemplate.query(
                 "SELECT o.id, p.name AS product_name, o.amount, o.currency, o.payment_status, o.status, "
-                        + "o.deployment_url, d.subdomain, d.deployed_at "
+                        + "o.deployment_url, d.subdomain, d.deployed_at, COALESCE(u.full_name, u.name, 'N/A') AS client_name, u.email AS client_email "
                         + "FROM orders o "
                         + "JOIN products p ON p.tenant_id = o.tenant_id AND p.id = o.product_id "
+                        + "JOIN users u ON u.id = o.user_id "
                         + "LEFT JOIN deployments d ON d.tenant_id = o.tenant_id AND d.order_id = o.id "
                         + "WHERE o.tenant_id = ? ORDER BY o.updated_at DESC, o.id DESC LIMIT 5",
                 this::mapOrderSummary,
@@ -122,9 +152,10 @@ public class DashboardService {
         int offset = page * size;
         return jdbcTemplate.query(
                 "SELECT o.id, p.name AS product_name, o.amount, o.currency, o.payment_status, o.status, "
-                        + "o.deployment_url, d.subdomain, d.deployed_at "
+                        + "o.deployment_url, d.subdomain, d.deployed_at, COALESCE(u.full_name, u.name, 'N/A') AS client_name, u.email AS client_email "
                         + "FROM orders o "
                         + "JOIN products p ON p.tenant_id = o.tenant_id AND p.id = o.product_id "
+                        + "JOIN users u ON u.id = o.user_id "
                         + "LEFT JOIN deployments d ON d.tenant_id = o.tenant_id AND d.order_id = o.id "
                         + "WHERE o.tenant_id = ? "
                         + "ORDER BY o.updated_at DESC, o.id DESC "
@@ -157,7 +188,9 @@ public class DashboardService {
                 rs.getString("status"),
                 rs.getString("deployment_url"),
                 rs.getString("subdomain"),
-                rs.getTimestamp("deployed_at") == null ? null : rs.getTimestamp("deployed_at").toInstant().atZone(APP_ZONE).toLocalDate());
+                rs.getTimestamp("deployed_at") == null ? null : rs.getTimestamp("deployed_at").toInstant().atZone(APP_ZONE).toLocalDate(),
+                rs.getString("client_name"),
+                rs.getString("client_email"));
     }
 
     private DeploymentSummary mapDeploymentSummary(ResultSet rs, int rowNum) throws SQLException {
@@ -169,13 +202,16 @@ public class DashboardService {
                 rs.getTimestamp("deployed_at") == null ? null : rs.getTimestamp("deployed_at").toInstant().atZone(APP_ZONE).toLocalDate());
     }
 
-    public record UserDashboardResponse(String role, List<OrderSummary> activeOrders, SubscriptionSummary subscription, List<DeploymentSummary> deployments) {
+    public record UserDashboardResponse(String role, String name, String email, List<OrderSummary> activeOrders, SubscriptionSummary subscription, List<DeploymentSummary> deployments, List<ClientProjectSummary> clientProjects) {
+    }
+
+    public record ClientProjectSummary(Long id, String clientName, String projectName, int progress, LocalDate dueDate, String status) {
     }
 
     public record AdminDashboardResponse(String role, long totalTenants, BigDecimal totalRevenue, long activeDeployments, List<OrderSummary> recentOrders, List<DeploymentSummary> deployments) {
     }
 
-    public record OrderSummary(Long id, String productName, BigDecimal amount, String currency, String paymentStatus, String status, String deploymentUrl, String subdomain, LocalDate deployedDate) {
+    public record OrderSummary(Long id, String productName, BigDecimal amount, String currency, String paymentStatus, String status, String deploymentUrl, String subdomain, LocalDate deployedDate, String clientName, String clientEmail) {
     }
 
     public record SubscriptionSummary(String plan, String status, LocalDate startDate, LocalDate endDate) {

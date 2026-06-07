@@ -19,7 +19,8 @@ const reviewSchema = z.object({
 export default function ProductDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const product = products.find((item) => item.slug === slug) ?? products[0];
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [isPaying, setIsPaying] = useState(false);
   const [activeTab, setActiveTab] = useState("Features");
@@ -28,7 +29,6 @@ export default function ProductDetail() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const isDental = product.slug === "dental-ai";
 
   const tabContent = useMemo(() => ({
     Features: [
@@ -43,8 +43,96 @@ export default function ProductDetail() {
   }), []);
 
   useEffect(() => {
-    loadReviews();
-  }, [product.slug]);
+    async function loadProduct() {
+      setLoading(true);
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/products/${slug}?tenantSlug=elevora-ai`, {
+          credentials: "include"
+        });
+        if (response.ok) {
+          const dbProd = await response.json();
+          const staticProd = products.find(
+            (item) => item.slug === dbProd.slug || item.slug === dbProd.slug.replace("ecommerce-bot", "e-commerce-bot")
+          );
+
+          let featuresList = [];
+          if (dbProd.features) {
+            featuresList = dbProd.features.split("\n").map((line) => {
+              const parts = line.split(":");
+              return [parts[0]?.trim() || "", parts.slice(1).join(":")?.trim() || ""];
+            }).filter(([title]) => title);
+          } else if (staticProd) {
+            featuresList = tabContent.Features;
+          } else {
+            featuresList = [
+              ["AI Integration", "High-performance LLM workflow pipelines."],
+              ["One-Click Deploy", "Instantly deploy containerized instances."],
+              ["Analytics Monitor", "Real-time logs, request counts, and execution metrics."]
+            ];
+          }
+
+          let techStack = [];
+          if (dbProd.techStack) {
+            techStack = dbProd.techStack.split(",").map((t) => t.trim());
+          } else if (staticProd) {
+            techStack = tabContent["Tech Stack"];
+          } else {
+            techStack = ["Spring Boot", "React", "Docker", "MySQL", "Tailwind CSS"];
+          }
+
+          let category = dbProd.category;
+          if (category === "AI_WEBSITE") category = "Healthcare & Dental";
+          else if (category === "AUTOMATION") category = "AI Automation";
+          else if (category === "CRM") category = "CRM & Sales";
+          else if (category === "CHATBOT") category = "E-Commerce";
+          else if (category === "TEMPLATE") category = "AI Automation";
+
+          setProduct({
+            id: dbProd.id,
+            icon: staticProd?.icon || "📦",
+            name: dbProd.name,
+            slug: dbProd.slug,
+            category: category,
+            price: `$${dbProd.price}`,
+            description: dbProd.description,
+            tags: techStack.slice(0, 3),
+            rating: staticProd?.rating || "5.0",
+            reviewsCount: staticProd?.reviews || "0",
+            accent: staticProd?.accent || "indigo",
+            preview: dbProd.videoUrl || staticProd?.preview || "/assets/dentaiproduct.mp4",
+            features: featuresList,
+            techStack: techStack,
+            demoUrl: dbProd.demoUrl,
+            dockerImage: dbProd.dockerImage
+          });
+        } else {
+          const staticProd = products.find((item) => item.slug === slug) ?? products[0];
+          setProduct({
+            ...staticProd,
+            features: tabContent.Features,
+            techStack: tabContent["Tech Stack"]
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load product details", err);
+        const staticProd = products.find((item) => item.slug === slug) ?? products[0];
+        setProduct({
+          ...staticProd,
+          features: tabContent.Features,
+          techStack: tabContent["Tech Stack"]
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [slug, tabContent]);
+
+  useEffect(() => {
+    if (product?.slug) {
+      loadReviews();
+    }
+  }, [product?.slug]);
 
   async function loadReviews() {
     setLoadingReviews(true);
@@ -98,6 +186,17 @@ export default function ProductDetail() {
     toast.success("Review published.");
   }
 
+  if (loading || !product) {
+    return (
+      <main className="min-h-screen bg-[#0F172A] text-white flex flex-col">
+        <WireNav compact title="Product Details" />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-slate-400 animate-pulse text-sm">Loading product details...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen min-w-[1180px] bg-[#0F172A] text-white">
       <WireNav compact title="Product Details" />
@@ -113,16 +212,16 @@ export default function ProductDetail() {
             <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
               <span className="flex text-amber-400">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={16} fill="currentColor" />)}</span>
               <span className="text-slate-400">{reviews.length} verified reviews</span>
-              {["JWT Auth", "Docker Deploy", "n8n Automation"].map((badge) => (
+              {product.tags.map((badge) => (
                 <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-bold text-indigo-200" key={badge}>{badge}</span>
               ))}
             </div>
           </div>
 
           <div className="mb-8 overflow-hidden rounded-2xl border border-indigo-400/20 bg-[#1E293B]">
-            {isDental ? (
-              <video className="aspect-video w-full bg-black object-cover" controls preload="metadata">
-                <source src="/assets/dentaldemovideo.mp4" type="video/mp4" />
+            {product.preview ? (
+              <video className="aspect-video w-full bg-black object-cover" controls preload="metadata" autoPlay loop muted playsInline>
+                <source src={product.preview} type="video/mp4" />
               </video>
             ) : (
               <div className="flex aspect-video flex-col items-center justify-center bg-gradient-to-br from-indigo-500/10 to-cyan-500/5">
@@ -140,7 +239,7 @@ export default function ProductDetail() {
 
           {activeTab === "Features" ? (
             <div className="grid grid-cols-2 gap-4">
-              {tabContent.Features.map(([title, desc]) => (
+              {(product.features || tabContent.Features).map(([title, desc]) => (
                 <Card key={title}><CardContent><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm leading-6 text-slate-400">{desc}</p></CardContent></Card>
               ))}
             </div>
@@ -148,7 +247,7 @@ export default function ProductDetail() {
 
           {activeTab === "Tech Stack" ? (
             <div className="grid grid-cols-3 gap-4">
-              {tabContent["Tech Stack"].map((tech) => (
+              {(product.techStack || tabContent["Tech Stack"]).map((tech) => (
                 <Card key={tech}><CardContent><span className="mb-3 block size-2 rounded-full bg-[#6366F1]" /><p className="font-bold">{tech}</p><p className="mt-1 text-xs text-slate-400">Open-source production stack</p></CardContent></Card>
               ))}
             </div>

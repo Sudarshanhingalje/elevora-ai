@@ -35,6 +35,10 @@ public class ProductManagementService {
         return productService.updateProduct(command);
     }
 
+    public java.util.List<ProductResponse> listAllProducts(JwtPrincipal principal) {
+        return productService.listAllProductsForTenant(principal.tenantId());
+    }
+
     public void deleteProduct(JwtPrincipal principal, Long productId) {
         productService.deleteProduct(principal.tenantId(), productId);
     }

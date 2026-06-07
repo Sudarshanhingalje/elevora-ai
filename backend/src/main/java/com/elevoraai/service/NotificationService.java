@@ -45,8 +45,16 @@ public class NotificationService {
     public List<NotificationResponse> listForUser(Long tenantId, Long userId) {
         return jdbcTemplate.query(
                 "SELECT id, tenant_id, user_id, channel, title, body, status, created_at, sent_at, read_at "
-                        + "FROM notifications WHERE tenant_id = ? AND user_id = ? ORDER BY created_at DESC, id DESC LIMIT 50",
+                        + "FROM notifications WHERE tenant_id = ? AND user_id = ? AND read_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 50",
                 this::mapNotification,
+                tenantId,
+                userId);
+    }
+
+    @Transactional
+    public void markAllAsRead(Long tenantId, Long userId) {
+        jdbcTemplate.update(
+                "UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND user_id = ? AND channel = 'IN_APP' AND read_at IS NULL",
                 tenantId,
                 userId);
     }

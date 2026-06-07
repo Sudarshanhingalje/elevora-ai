@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -35,14 +35,86 @@ export default function Home() {
     }
   ]);
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  const [dbProducts, setDbProducts] = useState([]);
 
   useEffect(() => {
-    import("../services/api.js")
-      .then((m) => m.apiRequest("/api/products/reviews/public"))
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+    fetch(`${apiBase}/api/products?tenantSlug=elevora-ai`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        return [];
+      })
+      .then((data) => {
+        setDbProducts(data);
+      })
+      .catch((err) => console.error("Error loading products:", err));
+  }, []);
+
+  const mergedProducts = useMemo(() => {
+    if (!dbProducts.length) {
+      return products.map((p) => ({ ...p, preview: p.preview || "/assets/dentaiproduct.mp4" }));
+    }
+
+    return dbProducts.map((dbProd) => {
+      const staticProd = products.find(
+        (p) => p.slug === dbProd.slug || p.slug === dbProd.slug.replace("ecommerce-bot", "e-commerce-bot")
+      );
+
+      let tags = [];
+      if (dbProd.techStack) {
+        tags = dbProd.techStack.split(",").map((t) => t.trim());
+      } else if (staticProd) {
+        tags = staticProd.tags;
+      } else {
+        tags = ["AI Automation", "Docker Deploy"];
+      }
+
+      let cat = dbProd.category;
+      if (cat === "AI_WEBSITE") cat = "Healthcare & Dental";
+      else if (cat === "AUTOMATION") cat = "AI Automation";
+      else if (cat === "CRM") cat = "CRM & Sales";
+      else if (cat === "CHATBOT") cat = "E-Commerce";
+      else if (cat === "TEMPLATE") cat = "AI Automation";
+
+      return {
+        id: dbProd.id,
+        icon: dbProd.screenshots || staticProd?.icon || "📦",
+        name: dbProd.name,
+        slug: dbProd.slug,
+        category: cat,
+        price: `$${dbProd.price}`,
+        description: dbProd.description,
+        tags: tags,
+        rating: staticProd?.rating || "5.0",
+        reviews: staticProd?.reviews || "0",
+        accent: staticProd?.accent || "indigo",
+        preview: dbProd.videoUrl || staticProd?.preview || "/assets/dentaiproduct.mp4",
+      };
+    });
+  }, [dbProducts]);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+    // First try product reviews, then fall back to direct feedback ratings
+    fetch(`${apiBase}/api/products/reviews/public`)
+      .then(r => r.ok ? r.json() : null)
       .then((data) => {
         if (data && data.length > 0) {
-          setReviews(data);
+          setReviews(data.map(r => ({ comment: r.comment, reviewer: r.reviewer, rating: r.rating })));
+          return;
         }
+        // Fallback: load from the general feedback table (≥4 stars)
+        return fetch(`${apiBase}/api/feedback/public`)
+          .then(r => r.ok ? r.json() : [])
+          .then((fbData) => {
+            if (fbData && fbData.length > 0) {
+              setReviews(fbData.map(f => ({
+                comment: `${f.message}\n\n— ${f.clientName}`,
+                reviewer: f.clientName,
+                rating: f.rating,
+              })));
+            }
+          });
       })
       .catch((err) => console.error("Failed to load reviews:", err));
   }, []);
@@ -357,7 +429,7 @@ export default function Home() {
 
           {/* Product Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {products.slice(0, 4).map((product) => {
+            {mergedProducts.slice(0, 4).map((product) => {
               // Custom colors based on tags or static accent
               let accentColorClass = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
               let thumbGradient = "from-[#0a1628] to-[#0d1f3c]";
@@ -383,12 +455,29 @@ export default function Home() {
                 >
                   {/* Thumbnail area */}
                   <div
-                    className={`relative h-40 bg-gradient-to-br ${thumbGradient} flex items-center justify-center`}
+                    className={`relative h-40 bg-gradient-to-br ${thumbGradient} flex items-center justify-center overflow-hidden`}
                   >
-                    <span className="text-5xl group-hover:scale-110 transition-transform">
-                      {product.icon}
-                    </span>
-                    <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap">
+                    {product.slug === "dental-ai" && product.preview ? (
+                      <video
+                        src={product.preview}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : product.icon && (product.icon.startsWith("/assets/") || product.icon.startsWith("http")) ? (
+                      <img
+                        src={product.icon}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        alt="Thumbnail"
+                      />
+                    ) : (
+                      <span className="text-5xl group-hover:scale-110 transition-transform">
+                        {product.icon}
+                      </span>
+                    )}
+                    <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap z-10">
                       {product.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}

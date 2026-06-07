@@ -100,10 +100,10 @@ public class AdminAnalyticsService {
 
     public List<TopCustomer> topCustomers(Long tenantId, int limit) {
         return jdbcTemplate.query(
-                "SELECT u.email, u.name, COALESCE(SUM(o.amount), 0) AS spent, COUNT(o.id) AS orders "
+                "SELECT u.email, COALESCE(u.full_name, u.name, 'N/A') AS name, COALESCE(SUM(o.amount), 0) AS spent, COUNT(o.id) AS orders "
                         + "FROM orders o JOIN users u ON u.tenant_id = o.tenant_id AND u.id = o.user_id "
                         + "WHERE o.tenant_id = ? AND o.payment_status = 'PAID' "
-                        + "GROUP BY u.id, u.email, u.name ORDER BY spent DESC LIMIT ?",
+                        + "GROUP BY u.id, u.email, u.full_name, u.name ORDER BY spent DESC LIMIT ?",
                 this::mapTopCustomer,
                 tenantId, limit);
     }

@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/feedback/public",
                                 "/api/internal/**",   // n8n callbacks — auth via X-Callback-Secret header
                                 "/actuator/health",
                                 "/actuator/info").permitAll()

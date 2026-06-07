@@ -144,7 +144,7 @@ public class CatalogBootstrapService implements ApplicationRunner {
                         new BigDecimal("119"),
                         "AI_WEBSITE",
                         "/assets/dentaldemovideo.mp4",
-                        "elevora/dental-ai:latest"),
+                        "dental-clinic-saas-backend:latest"),
                 new CatalogProduct(
                         "Gym Management AI",
                         "gym-ai",

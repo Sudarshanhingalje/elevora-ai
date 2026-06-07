@@ -30,14 +30,35 @@ public class FeedbackController {
             @AuthenticationPrincipal JwtPrincipal principal,
             @RequestBody SubmitFeedbackRequest request) {
         jdbcTemplate.update(
-                "INSERT INTO feedback (tenant_id, user_id, rating, nps_score, category, message) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO feedback (tenant_id, user_id, rating, nps_score, category, message, source, solution_quality, communication, delivery_speed, recommend, ticket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 principal.tenantId(),
                 principal.userId(),
                 request.rating(),
                 request.npsScore(),
                 request.category() != null ? request.category() : "GENERAL",
-                request.message());
+                request.message(),
+                request.source() != null ? request.source() : "PROJECT",
+                request.solutionQuality(),
+                request.communication(),
+                request.deliverySpeed(),
+                request.recommend(),
+                request.ticketId());
         return ResponseEntity.ok(new FeedbackStatus("success", "Thank you for your feedback!"));
+    }
+
+    @GetMapping("/public")
+    public List<PublicFeedbackResponse> listPublicFeedback() {
+        return jdbcTemplate.query(
+                "SELECT f.rating, f.message, COALESCE(u.full_name, u.name, 'Valued Client') AS client_name, f.category "
+                        + "FROM feedback f JOIN users u ON u.id = f.user_id "
+                        + "WHERE f.rating >= 4 "
+                        + "ORDER BY f.created_at DESC LIMIT 10",
+                (rs, rowNum) -> new PublicFeedbackResponse(
+                        rs.getInt("rating"),
+                        rs.getString("message"),
+                        rs.getString("client_name"),
+                        rs.getString("category")
+                ));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -62,12 +83,25 @@ public class FeedbackController {
                 rs.getTimestamp("created_at").toInstant());
     }
 
-    public record SubmitFeedbackRequest(int rating, Integer npsScore, String category, String message) {
+    public record SubmitFeedbackRequest(
+            int rating,
+            Integer npsScore,
+            String category,
+            String message,
+            String source,
+            Integer solutionQuality,
+            Integer communication,
+            Integer deliverySpeed,
+            Integer recommend,
+            Long ticketId) {
     }
 
     public record FeedbackStatus(String status, String message) {
     }
 
     public record FeedbackResponse(Long id, Long tenantId, Long userId, String email, int rating, String message, Instant createdAt) {
+    }
+
+    public record PublicFeedbackResponse(int rating, String message, String clientName, String category) {
     }
 }

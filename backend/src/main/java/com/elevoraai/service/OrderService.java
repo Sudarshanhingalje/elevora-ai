@@ -25,10 +25,12 @@ public class OrderService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectProvider<DeploymentTrigger> deploymentTriggerProvider;
+    private final OrderEmailService orderEmailService;
 
-    public OrderService(JdbcTemplate jdbcTemplate, ObjectProvider<DeploymentTrigger> deploymentTriggerProvider) {
+    public OrderService(JdbcTemplate jdbcTemplate, ObjectProvider<DeploymentTrigger> deploymentTriggerProvider, OrderEmailService orderEmailService) {
         this.jdbcTemplate = jdbcTemplate;
         this.deploymentTriggerProvider = deploymentTriggerProvider;
+        this.orderEmailService = orderEmailService;
     }
 
     @Transactional
@@ -67,7 +69,7 @@ public class OrderService {
         PaymentStatus paymentStatus = PaymentStatus.from(command.paymentStatus());
         String deploymentStatus = switch (paymentStatus) {
             case PENDING -> "PENDING";
-            case PAID -> "DEPLOYING";
+            case PAID -> "PENDING";
             case FAILED -> "FAILED";
             case REFUNDED -> "CANCELLED";
         };
@@ -95,11 +97,13 @@ public class OrderService {
                 command.ipAddress());
 
         if (paymentStatus == PaymentStatus.PAID) {
-            DeploymentTrigger deploymentTrigger = deploymentTriggerProvider.getIfAvailable();
-            if (deploymentTrigger == null) {
-                throw new IllegalStateException("DeploymentService trigger is required for paid orders");
-            }
-            deploymentTrigger.deployPaidOrder(order);
+            orderEmailService.sendOrderConfirmation(order);
+            // Auto deployment trigger commented out; deployment is strictly manually triggered by Admin click.
+            // DeploymentTrigger deploymentTrigger = deploymentTriggerProvider.getIfAvailable();
+            // if (deploymentTrigger == null) {
+            //     throw new IllegalStateException("DeploymentService trigger is required for paid orders");
+            // }
+            // deploymentTrigger.deployPaidOrder(order);
         }
 
         return order;

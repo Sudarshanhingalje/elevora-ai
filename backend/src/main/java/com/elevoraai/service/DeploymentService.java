@@ -22,6 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,11 +32,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class DeploymentService implements DeploymentTrigger {
 
+    private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
     private static final Duration DEPLOY_TIMEOUT = Duration.ofMinutes(5);
     private static final String AUDIT_IP = "127.0.0.1";
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
+    private final DeploymentEmailService deploymentEmailService;
     private final String deployScriptPath;
     private final String dbHost;
     private final String dbName;
@@ -47,6 +51,7 @@ public class DeploymentService implements DeploymentTrigger {
     public DeploymentService(
             JdbcTemplate jdbcTemplate,
             NotificationService notificationService,
+            DeploymentEmailService deploymentEmailService,
             @Value("${app.deploy.script-path:../deploy.sh}") String deployScriptPath,
             @Value("${DB_HOST}") String dbHost,
             @Value("${DB_NAME}") String dbName,
@@ -57,6 +62,7 @@ public class DeploymentService implements DeploymentTrigger {
             @Value("${PUBLIC_DOMAIN:elevora.ai}") String publicDomain) {
         this.jdbcTemplate = jdbcTemplate;
         this.notificationService = notificationService;
+        this.deploymentEmailService = deploymentEmailService;
         this.deployScriptPath = deployScriptPath;
         this.dbHost = dbHost;
         this.dbName = dbName;
@@ -74,9 +80,18 @@ public class DeploymentService implements DeploymentTrigger {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only paid orders can be deployed");
         }
 
+        // Transition order status to DEPLOYING so the admin dashboard immediately updates UI
+        jdbcTemplate.update(
+                "UPDATE orders SET status = 'DEPLOYING', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND id = ?",
+                order.tenantId(),
+                order.id());
+
         DeploymentPlan plan = loadDeploymentPlan(order.tenantId(), order.id());
         Long deploymentId = upsertQueuedDeployment(order, plan);
         logActivity(order.tenantId(), order.userId(), "DEPLOYMENT_QUEUED", "deployments", deploymentId);
+
+        // Trigger Deployment Started Notification & Email
+        deploymentEmailService.sendDeploymentStarted(order);
 
         DeploymentResult result = runDeployScript(plan.tenantSlug(), plan.dockerImage(), plan.containerName());
         if (result.success()) {
@@ -88,11 +103,18 @@ public class DeploymentService implements DeploymentTrigger {
             String body = "Your purchased AI product has been successfully activated and deployed. You can access it here: https://" + plan.subdomain();
             notificationService.notifyUser(order.tenantId(), order.userId(), title, body);
             
+            // Trigger Deployment Success Email & Admin Notification
+            deploymentEmailService.sendDeploymentSuccess(order, plan.subdomain());
+            
             return;
         }
 
         markDeploymentFailed(order.tenantId(), order.id(), deploymentId);
         logActivity(order.tenantId(), order.userId(), "DEPLOYMENT_FAILED", "deployments", deploymentId);
+        
+        // Trigger Deployment Failed Email & Admin Notification
+        deploymentEmailService.sendDeploymentFailed(order);
+        
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Docker deployment failed");
     }
 
@@ -162,7 +184,8 @@ public class DeploymentService implements DeploymentTrigger {
                             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product Docker image is required");
                         }
                         String normalizedSlug = normalizeSlug(tenantSlug);
-                        String subdomain = normalizedSlug + "." + publicDomain;
+                        String baseSubdomain = normalizedSlug + "." + publicDomain;
+                        String subdomain = generateUniqueSubdomain(tenantId, baseSubdomain);
                         String containerName = "elevora-" + normalizedSlug;
                         return new DeploymentPlan(normalizedSlug, dockerImage, subdomain, containerName);
                     },
@@ -171,6 +194,32 @@ public class DeploymentService implements DeploymentTrigger {
         } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Paid order not found for tenant");
         }
+    }
+
+    /**
+     * Ensure the subdomain for a tenant is unique. If the base subdomain already exists,
+     * a numeric suffix is added (e.g. example.com‑2, example.com‑3, ...).
+     */
+    private String generateUniqueSubdomain(Long tenantId, String baseSubdomain) {
+        // Find existing subdomains that start with the base value
+        List<String> existing = jdbcTemplate.queryForList(
+                "SELECT subdomain FROM deployments WHERE tenant_id = ? AND subdomain LIKE ?",
+                String.class, tenantId, baseSubdomain + "%");
+        if (!existing.contains(baseSubdomain)) {
+            return baseSubdomain;
+        }
+        // Determine the highest numeric suffix already used
+        int max = 0;
+        for (String s : existing) {
+            String suffix = s.substring(baseSubdomain.length());
+            if (suffix.startsWith("-")) {
+                try {
+                    int num = Integer.parseInt(suffix.substring(1));
+                    if (num > max) max = num;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return baseSubdomain + "-" + (max + 1);
     }
 
     private Long upsertQueuedDeployment(OrderRecord order, DeploymentPlan plan) {
@@ -205,7 +254,18 @@ public class DeploymentService implements DeploymentTrigger {
     }
 
     private DeploymentResult runDeployScript(String tenantSlug, String dockerImage, String containerName) {
-        ProcessBuilder processBuilder = new ProcessBuilder(deployScriptPath, tenantSlug, dockerImage, containerName);
+        ProcessBuilder processBuilder;
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            String winScriptPath = deployScriptPath.replace("deploy.sh", "deploy.ps1");
+            String powerShellPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+            java.io.File psExecutable = new java.io.File(powerShellPath);
+            String executable = psExecutable.exists() ? powerShellPath : "powershell";
+            processBuilder = new ProcessBuilder(executable, "-ExecutionPolicy", "Bypass", "-File", winScriptPath, tenantSlug, dockerImage, containerName);
+        } else {
+            processBuilder = new ProcessBuilder(deployScriptPath, tenantSlug, dockerImage, containerName);
+        }
+
         Map<String, String> env = processBuilder.environment();
         env.put("DB_HOST", dbHost);
         env.put("DB_NAME", dbName);
@@ -213,6 +273,10 @@ public class DeploymentService implements DeploymentTrigger {
         env.put("DB_PASSWORD", dbPassword);
         env.put("REDIS_HOST", redisHost);
         env.put("REDIS_PASSWORD", redisPassword);
+
+        String cmdString = String.join(" ", processBuilder.command());
+        log.info("Attempting to run command: {}", cmdString);
+        log.info("Working directory: {}", new java.io.File(".").getAbsolutePath());
 
         try {
             Process process = processBuilder.start();
@@ -224,12 +288,14 @@ public class DeploymentService implements DeploymentTrigger {
 
             String output = readProcessOutput(process);
             if (process.exitValue() != 0 || !StringUtils.hasText(output)) {
+                log.error("Deployment script failed with exit code {}. Script Output:\n{}", process.exitValue(), output);
                 return new DeploymentResult(false, null);
             }
 
             return new DeploymentResult(true, output.lines().reduce((first, second) -> second).orElse(output).trim());
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Deployment script could not be started", ex);
+            log.error("Failed to start deployment script: {}", cmdString, ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Deployment script could not be started: " + ex.getMessage(), ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Deployment was interrupted", ex);
