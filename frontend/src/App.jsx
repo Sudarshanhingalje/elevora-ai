@@ -12,6 +12,9 @@ import CheckoutSuccess from "./pages/CheckoutSuccess.jsx";
 import CheckoutFailed from "./pages/CheckoutFailed.jsx";
 import BillingPage from "./pages/BillingPage.jsx";
 import SubscriptionPage from "./pages/SubscriptionPage.jsx";
+import Demo from "./pages/Demo.jsx";
+import DemoParticles from "./pages/DemoParticles.jsx";
+import DemoGooey from "./pages/DemoGooey.jsx";
 
 // Newly Implemented Pages (W15-24)
 import RevenueDashboard from "./pages/RevenueDashboard.jsx";
@@ -33,6 +36,9 @@ export default function App() {
     <div className="min-h-screen bg-[#0F172A] text-slate-50">
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/demo" element={<Demo />} />
+        <Route path="/demo-particles" element={<DemoParticles />} />
+        <Route path="/demo-gooey" element={<DemoGooey />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
@@ -60,6 +66,7 @@ export default function App() {
         <Route path="/notifications" element={<ProtectedRoute><NotificationsPanel /></ProtectedRoute>} />
         
         <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/user-locations" element={<ProtectedRoute adminOnly><AdminDashboard defaultActive="user-locations" /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <CookieConsent />

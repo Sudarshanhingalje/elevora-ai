@@ -146,9 +146,25 @@ public class UserService {
                 rs.getBoolean("support_updates"));
     }
 
-    public record UpdateProfileRequest(String name, String email) {}
+    public record UpdateProfileRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Name is required")
+            @jakarta.validation.constraints.Size(min = 2, max = 255, message = "Name must be between 2 and 255 characters")
+            String name,
 
-    public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+            @jakarta.validation.constraints.NotBlank(message = "Email is required")
+            @jakarta.validation.constraints.Email(message = "Email must be valid")
+            @jakarta.validation.constraints.Size(max = 255, message = "Email cannot exceed 255 characters")
+            String email
+    ) {}
+
+    public record ChangePasswordRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Current password is required")
+            String currentPassword,
+
+            @jakarta.validation.constraints.NotBlank(message = "New password is required")
+            @jakarta.validation.constraints.Size(min = 8, max = 128, message = "New password must be at least 8 characters")
+            String newPassword
+    ) {}
 
     public record NotificationPrefsRequest(
             boolean emailNotifs, boolean inAppNotifs, boolean billingAlerts, boolean supportUpdates) {}

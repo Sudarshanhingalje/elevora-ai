@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ShieldCheck, BarChart2, Package, Rocket, TrendingUp, FileText,
-  Activity, Briefcase, Zap, LifeBuoy, Settings, ShoppingBag
+  Activity, Briefcase, Zap, LifeBuoy, Settings, ShoppingBag, MapPin
 } from "lucide-react";
 import WireNav from "../components/wire/WireNav.jsx";
 import { apiFetch } from "./admin/AdminHelpers.jsx";
@@ -17,6 +17,7 @@ import AdminAutomation from "./admin/AdminAutomation.jsx";
 import AdminSupport from "./admin/AdminSupport.jsx";
 import AdminSettings from "./admin/AdminSettings.jsx";
 import AdminProducts from "./admin/AdminProducts.jsx";
+import AdminUserLocations from "./admin/AdminUserLocations.jsx";
 
 const ADMIN_NAV = [
   { label: "Overview",         icon: BarChart2,  section: "overview"   },
@@ -30,13 +31,14 @@ const ADMIN_NAV = [
   { label: "Leads Generator",  icon: Briefcase,  section: "leads"      },
   { label: "Automation",       icon: Zap,        section: "automation" },
   { label: "Support",          icon: LifeBuoy,   section: "support"    },
+  { label: "User Locations",   icon: MapPin,     section: "user-locations" },
   { label: "Settings",         icon: Settings,   section: "settings"   },
 ];
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ defaultActive = "overview" }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [active, setActive]   = useState("overview");
+  const [active, setActive]   = useState(defaultActive);
 
   useEffect(() => {
     apiFetch("/api/dashboard/admin")
@@ -94,6 +96,7 @@ export default function AdminDashboard() {
           {active === "leads" && <AdminLeads />}
           {active === "automation" && <AdminAutomation setActive={setActive} />}
           {active === "support" && <AdminSupport />}
+          {active === "user-locations" && <AdminUserLocations />}
           {active === "settings" && <AdminSettings />}
         </section>
       </div>

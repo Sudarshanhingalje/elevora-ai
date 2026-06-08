@@ -14,17 +14,25 @@ import {
   Mail,
   MessageSquare,
   ShoppingBag,
+  Sparkles,
   Star,
   Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button.jsx";
+import DisplayCards from "../components/ui/display-cards.jsx";
+import { LogoCloud } from "../components/ui/logo-cloud-2.jsx";
 import WireNav from "../components/wire/WireNav.jsx";
+import LandingBackground from "../components/ui/landing-bg.jsx";
+import GooeyText from "../components/ui/gooey-text-morphing.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { products } from "../data/wireframeData.js";
+import { useLandingScrollEffects } from "../hooks/useLandingScrollEffects.js";
+import { cn } from "../lib/utils.js";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
+  useLandingScrollEffects();
 
   const [reviews, setReviews] = useState([
     {
@@ -156,19 +164,16 @@ export default function Home() {
 
   return (
     <main
-      className="min-h-screen bg-[#181824] text-[#f5f5fa] overflow-x-hidden selection:bg-[#e05c3a] selection:text-white"
+      className="min-h-screen bg-[#181824] text-[#f5f5fa] overflow-x-hidden selection:bg-[#e05c3a] selection:text-white relative isolate"
       style={brandStyles}
     >
+      <LandingBackground />
+
       {/* Navigation Bar */}
       <WireNav />
 
       {/* ── HERO SECTION ── */}
       <section className="relative overflow-hidden pt-24 pb-28">
-        {/* Background Grid Overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:48px_48px] opacity-40 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] pointer-events-none" />
-
-        {/* Glow Brand Blob */}
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-[rgba(224,92,58,0.15)] filter blur-[120px] pointer-events-none animate-pulse-glow" />
 
         <div className="container mx-auto px-6 max-w-7xl relative z-10 text-center">
           <motion.div
@@ -177,18 +182,33 @@ export default function Home() {
             transition={{ duration: 0.6 }}
           >
             {/* New Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1e1e2e]/60 px-4 py-2 text-xs text-[#8b8ba8] backdrop-blur-md mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-gray-300 backdrop-blur-md mb-8 shadow-sm">
               <span className="text-[#e05c3a] font-bold">★</span>
               <span>New: AI Agents v2 — autonomous, multi-step, in production</span>
             </div>
 
             {/* Hero Heading */}
-            <h1 className="font-['Space_Grotesk'] text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] max-w-4xl mx-auto">
-              Automate anything.
-              <br />
-              <span className="bg-gradient-to-r from-[#e05c3a] to-[#f07a55] bg-clip-text text-transparent">
-                Powered by AI.
-              </span>
+            <h1 className="max-w-4xl mx-auto flex flex-col items-center" style={{ gap: "0.15em" }}>
+              {/* Line 1 — white morphing */}
+              <div className="relative w-full" style={{ height: "72px" }}>
+                <GooeyText
+                  texts={["Automate anything.", "Eliminate busywork.", "Connect everything.", "Deploy in minutes."]}
+                  morphTime={1}
+                  cooldownTime={2.0}
+                  textClassName="text-white font-['Space_Grotesk'] font-bold tracking-tight text-5xl md:text-[72px] leading-none"
+                  className="absolute inset-0"
+                />
+              </div>
+              {/* Line 2 — brand orange morphing */}
+              <div className="relative w-full" style={{ height: "72px" }}>
+                <GooeyText
+                  texts={["Powered by AI.", "Built for Scale.", "Driven by Data.", "Run by Agents."]}
+                  morphTime={1}
+                  cooldownTime={2.0}
+                  textClassName="bg-gradient-to-r from-[#e05c3a] to-[#f07a55] bg-clip-text text-transparent font-['Space_Grotesk'] font-bold tracking-tight text-5xl md:text-[72px] leading-none"
+                  className="absolute inset-0"
+                />
+              </div>
             </h1>
 
             {/* Hero Description */}
@@ -212,13 +232,13 @@ export default function Home() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/10 bg-[#1e1e2e]/60 hover:bg-[#1e1e2e] text-white px-8 py-6 rounded-lg backdrop-blur-md transition-all"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-white px-8 py-6 rounded-lg transition-all shadow-sm"
               >
                 <Link to={isAuthenticated ? "/marketplace" : "/login"}>Watch demo</Link>
               </Button>
             </div>
 
-            <p className="mt-6 text-xs text-[#8b8ba8]">
+            <p className="mt-6 text-xs text-gray-400">
               Free forever plan · No credit card · Self-host available
             </p>
           </motion.div>
@@ -230,16 +250,16 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-20 relative max-w-4xl mx-auto"
           >
-            <div className="absolute inset-0 -m-[1px] rounded-2xl bg-gradient-to-r from-[#e05c3a]/30 via-transparent to-[#f07a55]/30 filter blur-sm opacity-60" />
-            <div className="relative rounded-2xl border border-white/10 bg-[#1e1e2e]/80 backdrop-blur-xl p-8 shadow-2xl">
+            <div className="absolute inset-0 -m-[1px] rounded-2xl bg-gradient-to-r from-[#e05c3a]/20 via-transparent to-[#f07a55]/20 filter blur-sm opacity-60" />
+            <div className="relative rounded-2xl border border-white/10 bg-[#1e1e2e]/90 backdrop-blur-xl p-8 shadow-xl">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center">
                 {/* Gmail Node */}
                 <div className="relative flex flex-col items-center">
                   <div className="w-16 h-16 rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/20 to-red-500/5 flex items-center justify-center text-red-400 shadow-md">
                     <Mail size={28} />
                   </div>
-                  <p className="mt-3 text-xs font-semibold text-[#f5f5fa]">Gmail</p>
-                  <p className="text-[10px] text-[#8b8ba8] mt-1">Lead Email Received</p>
+                   <p className="mt-3 text-xs font-semibold text-white">Gmail</p>
+                   <p className="text-[10px] text-gray-400 mt-1">Lead Email Received</p>
                   <div className="hidden md:block absolute top-8 -right-4 text-[#e05c3a] font-bold text-lg animate-pulse">
                     →
                   </div>
@@ -250,8 +270,8 @@ export default function Home() {
                   <div className="w-16 h-16 rounded-xl border border-[#e05c3a]/30 bg-gradient-to-br from-[#e05c3a]/25 to-[#e05c3a]/5 flex items-center justify-center text-[#e05c3a] shadow-md animate-pulse">
                     <Bot size={28} />
                   </div>
-                  <p className="mt-3 text-xs font-semibold text-[#f5f5fa]">AI Agent</p>
-                  <p className="text-[10px] text-[#8b8ba8] mt-1">Analyzes & Qualifies</p>
+                   <p className="mt-3 text-xs font-semibold text-white">AI Agent</p>
+                   <p className="text-[10px] text-gray-400 mt-1">Analyzes & Qualifies</p>
                   <div className="hidden md:block absolute top-8 -right-4 text-[#e05c3a] font-bold text-lg animate-pulse">
                     →
                   </div>
@@ -262,8 +282,8 @@ export default function Home() {
                   <div className="w-16 h-16 rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center text-blue-400 shadow-md">
                     <Database size={28} />
                   </div>
-                  <p className="mt-3 text-xs font-semibold text-[#f5f5fa]">Database</p>
-                  <p className="text-[10px] text-[#8b8ba8] mt-1">Save Lead Status</p>
+                   <p className="mt-3 text-xs font-semibold text-white">Database</p>
+                   <p className="text-[10px] text-gray-400 mt-1">Save Lead Status</p>
                   <div className="hidden md:block absolute top-8 -right-4 text-[#e05c3a] font-bold text-lg animate-pulse">
                     →
                   </div>
@@ -274,8 +294,8 @@ export default function Home() {
                   <div className="w-16 h-16 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/20 to-purple-500/5 flex items-center justify-center text-purple-400 shadow-md">
                     <MessageSquare size={28} />
                   </div>
-                  <p className="mt-3 text-xs font-semibold text-[#f5f5fa]">Slack</p>
-                  <p className="text-[10px] text-[#8b8ba8] mt-1">Notify Sales Team</p>
+                   <p className="mt-3 text-xs font-semibold text-white">Slack</p>
+                   <p className="text-[10px] text-gray-400 mt-1">Notify Sales Team</p>
                 </div>
               </div>
 
@@ -283,7 +303,7 @@ export default function Home() {
               <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between text-xs text-[#8b8ba8] font-mono">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="text-emerald-400 font-semibold">Live</span>
+                  <span className="text-emerald-600 font-semibold">Live</span>
                   <span>· 2,471 workflow executions today</span>
                 </div>
                 <div>avg latency: 1.2s</div>
@@ -291,25 +311,19 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Trusted Companies */}
+          {/* Logo Cloud */}
           <div className="mt-24 text-center">
-            <p className="text-xs uppercase tracking-widest text-[#8b8ba8] font-bold">
-              Trusted by automation teams at
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center items-center gap-x-16 gap-y-6 text-xl font-bold tracking-widest text-slate-500/60 font-['Space_Grotesk']">
-              <span className="hover:text-[#f5f5fa] transition-colors">ACME</span>
-              <span className="hover:text-[#f5f5fa] transition-colors">STELLAR</span>
-              <span className="hover:text-[#f5f5fa] transition-colors">NORTHWIND</span>
-              <span className="hover:text-[#f5f5fa] transition-colors">VERTEX</span>
-              <span className="hover:text-[#f5f5fa] transition-colors">LUMEN</span>
-              <span className="hover:text-[#f5f5fa] transition-colors">AXIOM</span>
-            </div>
+            <h2 className="mb-8 text-center text-lg font-medium tracking-tight text-gray-400 md:text-2xl">
+              Built for teams inspired by{" "}
+              <span className="font-semibold text-white">startup-scale operators</span>
+            </h2>
+            <LogoCloud className="mx-auto max-w-4xl" />
           </div>
         </div>
       </section>
 
       {/* ── MARKETPLACE SECTIONS ── */}
-      <section className="py-24 border-t border-white/5 bg-[#181824]" id="marketplace">
+      <section data-scroll-section className="py-24 border-t border-white/5 bg-transparent" id="marketplace">
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div>
@@ -624,39 +638,57 @@ export default function Home() {
           </div>
 
           {/* ── PRICING PANEL, FAQ, & QUICK LINKS (Three Col) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-            {/* Core Pricing Plans */}
-            <div className="rounded-2xl border border-white/10 bg-[#1e1e2e] p-8 flex flex-col justify-between">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-16">
+            {/* Core Pricing Plans - Replaced with DisplayCards Stack */}
+            <div className="p-8 flex flex-col justify-between overflow-hidden relative min-h-[420px] lg:min-h-[460px]">
               <div>
-                <p className="text-xs text-[#e05c3a] font-mono font-semibold tracking-wider">
+                <p className="text-xs text-[#e05c3a] font-mono font-semibold tracking-wider mb-2">
                   // Pricing
                 </p>
-                <h3 className="font-['Space_Grotesk'] text-xl font-bold mt-1 mb-6">Simple plans</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-[#181824]">
-                    <span className="text-xs font-semibold">Basic Starter</span>
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md">
-                      ₹9,999
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-[#e05c3a]/20 bg-[#e05c3a]/5">
-                    <span className="text-xs font-bold text-[#f5f5fa]">Professional</span>
-                    <span className="text-[10px] font-bold text-white bg-[#e05c3a] px-2.5 py-1 rounded-md">
-                      ₹24,999
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-[#181824]">
-                    <span className="text-xs font-semibold">Enterprise</span>
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
-                      Custom
-                    </span>
-                  </div>
+                <h3 className="font-['Space_Grotesk'] text-xl font-bold mb-8">Simple plans</h3>
+                
+                {/* Stacked Pricing Cards Animation */}
+                <div className="flex justify-center items-center py-6 scale-[0.75] sm:scale-80 md:scale-85 lg:scale-[0.72] xl:scale-80 origin-center my-6">
+                  <DisplayCards
+                    cards={[
+                      {
+                        icon: <Sparkles className="size-4 text-emerald-300" />,
+                        title: "Basic Starter",
+                        description: "Everything to get started",
+                        date: "₹9,999 / project",
+                        iconClassName: "text-emerald-500",
+                        titleClassName: "text-emerald-400",
+                        className:
+                          "[grid-area:stack] border-emerald-500/30 bg-[#1e1e2e] hover:-translate-y-10 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
+                      },
+                      {
+                        icon: <Sparkles className="size-4 text-orange-300" />,
+                        title: "Professional",
+                        description: "Full automation suite",
+                        date: "₹24,999 / project",
+                        iconClassName: "text-[#e05c3a]",
+                        titleClassName: "text-[#e05c3a]",
+                        className:
+                          "[grid-area:stack] translate-x-8 translate-y-8 border-[#e05c3a]/40 bg-[#1e1e2e] hover:-translate-y-1 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
+                      },
+                      {
+                        icon: <Sparkles className="size-4 text-amber-300" />,
+                        title: "Enterprise",
+                        description: "Custom scope & SLA",
+                        date: "Custom pricing",
+                        iconClassName: "text-amber-500",
+                        titleClassName: "text-amber-400",
+                        className:
+                          "[grid-area:stack] translate-x-16 translate-y-16 border-amber-500/30 bg-[#1e1e2e] hover:translate-y-6",
+                      },
+                    ]}
+                  />
                 </div>
               </div>
               <Button
                 asChild
                 variant="outline"
-                className="w-full mt-6 border-white/10 bg-[#181824] hover:bg-white/5 text-xs text-[#f5f5fa] py-5"
+                className="w-full mt-6 border-white/10 bg-[#181824] hover:bg-white/5 text-xs text-[#f5f5fa] py-5 z-10"
               >
                 <Link to="/pricing">See full pricing</Link>
               </Button>
@@ -716,7 +748,7 @@ export default function Home() {
       </section>
 
       {/* ── PLATFORM FEATURES SECTION ── */}
-      <section className="py-24 border-t border-white/5 bg-[#181824]">
+      <section data-scroll-section className="py-24 border-t border-white/5 bg-transparent">
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="max-w-2xl">
             <p className="text-[#e05c3a] font-mono text-sm font-semibold tracking-wide">
@@ -808,7 +840,8 @@ export default function Home() {
 
       {/* ── INTEGRATIONS SECTION ── */}
       <section
-        className="border-t border-white/5 bg-[#181824] relative overflow-hidden"
+        data-scroll-section
+        className="border-t border-white/5 bg-transparent relative overflow-hidden"
         style={{ minHeight: "560px" }}
       >
         <div className="container mx-auto px-6 max-w-7xl relative z-10 py-24">
@@ -962,7 +995,7 @@ export default function Home() {
       </section>
 
       {/* ── SIMPLE PRICING PLAN CARDS ── */}
-      <section className="py-24 border-t border-white/5 bg-[#181824]">
+      <section data-scroll-section className="py-24 border-t border-white/5 bg-transparent">
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="text-center max-w-xl mx-auto mb-16">
             <p className="text-[#e05c3a] font-mono text-sm font-semibold tracking-wide">
@@ -1090,7 +1123,7 @@ export default function Home() {
       </section>
 
       {/* ── CALL TO ACTION ── */}
-      <section className="py-20">
+      <section data-scroll-section className="py-20">
         <div className="container mx-auto px-6 max-w-5xl">
           <div className="relative rounded-3xl border border-white/10 bg-[#1e1e2e] overflow-hidden p-12 md:p-20 text-center shadow-2xl">
             {/* Glow accent */}

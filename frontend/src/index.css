@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: #181824;
+  --color-muted: #1e1e2e;
+  --color-muted-foreground: #8b8ba8;
+  --color-border: rgba(255, 255, 255, 0.08);
+}
+
 :root {
   color-scheme: dark;
   font-family:

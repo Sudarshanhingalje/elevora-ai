@@ -1,6 +1,10 @@
 package com.elevoraai.controller;
 
 import com.elevoraai.config.SecurityConfig.JwtPrincipal;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -33,7 +37,7 @@ public class ClientProjectController {
     @PostMapping
     public ClientProject createProject(
             @AuthenticationPrincipal JwtPrincipal principal,
-            @RequestBody ClientProjectRequest request) {
+            @Valid @RequestBody ClientProjectRequest request) {
         jdbcTemplate.update(
                 "INSERT INTO client_projects (tenant_id, client_name, project_name, progress, due_date, status) VALUES (?, ?, ?, ?, ?, ?)",
                 principal.tenantId(),
@@ -51,7 +55,7 @@ public class ClientProjectController {
     public ResponseEntity<ClientProject> updateProject(
             @AuthenticationPrincipal JwtPrincipal principal,
             @PathVariable Long id,
-            @RequestBody ClientProjectRequest request) {
+            @Valid @RequestBody ClientProjectRequest request) {
         int updated = jdbcTemplate.update(
                 "UPDATE client_projects SET client_name = ?, project_name = ?, progress = ?, due_date = ?, status = ? WHERE tenant_id = ? AND id = ?",
                 request.clientName(),
@@ -97,5 +101,22 @@ public class ClientProjectController {
     }
 
     public record ClientProject(Long id, Long tenantId, String clientName, String projectName, int progress, LocalDate dueDate, String status) {}
-    public record ClientProjectRequest(String clientName, String projectName, int progress, LocalDate dueDate, String status) {}
+    
+    public record ClientProjectRequest(
+            @NotBlank(message = "Client name is required")
+            @Size(max = 255, message = "Client name cannot exceed 255 characters")
+            String clientName,
+
+            @NotBlank(message = "Project name is required")
+            @Size(max = 255, message = "Project name cannot exceed 255 characters")
+            String projectName,
+
+            int progress,
+
+            @NotNull(message = "Due date is required")
+            LocalDate dueDate,
+
+            @NotBlank(message = "Status is required")
+            String status
+    ) {}
 }

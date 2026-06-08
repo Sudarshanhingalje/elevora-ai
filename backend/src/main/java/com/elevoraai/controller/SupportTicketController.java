@@ -4,6 +4,7 @@ import com.elevoraai.config.SecurityConfig.JwtPrincipal;
 import com.elevoraai.service.SupportTicketService;
 import com.elevoraai.service.SupportTicketService.CreateTicketRequest;
 import com.elevoraai.service.SupportTicketService.TicketResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,7 +33,7 @@ public class SupportTicketController {
     @PostMapping
     public TicketResponse createTicket(
             @AuthenticationPrincipal JwtPrincipal principal,
-            @RequestBody CreateTicketRequest request) {
+            @Valid @RequestBody CreateTicketRequest request) {
         return supportTicketService.createTicket(principal.tenantId(), principal.userId(), request);
     }
 

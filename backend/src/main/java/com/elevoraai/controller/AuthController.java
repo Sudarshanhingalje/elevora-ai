@@ -1,6 +1,7 @@
 package com.elevoraai.controller;
 
 import com.elevoraai.config.JwtUtil;
+import com.elevoraai.service.AuditLogService;
 import com.elevoraai.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,12 +33,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final AuthService authService;
-    private final JwtUtil jwtUtil;
+    private final AuthService    authService;
+    private final JwtUtil        jwtUtil;
+    private final AuditLogService auditLogService;
 
-    public AuthController(AuthService authService, JwtUtil jwtUtil) {
-        this.authService = authService;
-        this.jwtUtil = jwtUtil;
+    public AuthController(AuthService authService, JwtUtil jwtUtil, AuditLogService auditLogService) {
+        this.authService     = authService;
+        this.jwtUtil         = jwtUtil;
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping("/register")
@@ -45,8 +48,14 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        AuthTokens tokens = authService.register(request, clientIp(httpRequest));
+        String ip = clientIp(httpRequest);
+        AuthTokens tokens = authService.register(request, ip);
         addAuthCookies(response, tokens);
+        auditLogService.logSuccess(
+                tokens.tenantId(), tokens.userId(), tokens.email(), tokens.role(),
+                AuditLogService.ACTION_USER_REGISTER,
+                AuditLogService.ENTITY_AUTH, String.valueOf(tokens.userId()),
+                "New user registered: " + tokens.email(), ip);
         return ResponseEntity.status(HttpStatus.CREATED).body(AuthResponse.from(tokens));
     }
 
@@ -55,8 +64,17 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        AuthTokens tokens = authService.login(request, clientIp(httpRequest));
+        String ip = clientIp(httpRequest);
+        AuthTokens tokens = authService.login(request, ip);
         addAuthCookies(response, tokens);
+        String action = "ADMIN".equalsIgnoreCase(tokens.role())
+                ? AuditLogService.ACTION_ADMIN_LOGIN
+                : AuditLogService.ACTION_USER_LOGIN;
+        auditLogService.logSuccess(
+                tokens.tenantId(), tokens.userId(), tokens.email(), tokens.role(),
+                action,
+                AuditLogService.ENTITY_AUTH, String.valueOf(tokens.userId()),
+                "Login successful: " + tokens.email() + " [" + tokens.role() + "]", ip);
         return ResponseEntity.ok(AuthResponse.from(tokens));
     }
 
@@ -142,8 +160,17 @@ public class AuthController {
             String state,
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
-        AuthTokens tokens = authService.socialLoginCallback(provider, code, state, clientIp(request));
+        String ip = clientIp(request);
+        AuthTokens tokens = authService.socialLoginCallback(provider, code, state, ip);
         addAuthCookies(response, tokens);
+        String action = "ADMIN".equalsIgnoreCase(tokens.role())
+                ? AuditLogService.ACTION_ADMIN_LOGIN
+                : AuditLogService.ACTION_USER_LOGIN;
+        auditLogService.logSuccess(
+                tokens.tenantId(), tokens.userId(), tokens.email(), tokens.role(),
+                action,
+                AuditLogService.ENTITY_AUTH, String.valueOf(tokens.userId()),
+                "Social login [" + provider + "]: " + tokens.email() + " [" + tokens.role() + "]", ip);
         response.sendRedirect(authService.frontendDashboardUrl());
     }
 

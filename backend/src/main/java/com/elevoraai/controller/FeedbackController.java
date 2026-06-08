@@ -1,6 +1,10 @@
 package com.elevoraai.controller;
 
 import com.elevoraai.config.SecurityConfig.JwtPrincipal;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,7 +32,7 @@ public class FeedbackController {
     @PostMapping
     public ResponseEntity<FeedbackStatus> submitFeedback(
             @AuthenticationPrincipal JwtPrincipal principal,
-            @RequestBody SubmitFeedbackRequest request) {
+            @Valid @RequestBody SubmitFeedbackRequest request) {
         jdbcTemplate.update(
                 "INSERT INTO feedback (tenant_id, user_id, rating, nps_score, category, message, source, solution_quality, communication, delivery_speed, recommend, ticket_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 principal.tenantId(),
@@ -84,9 +88,12 @@ public class FeedbackController {
     }
 
     public record SubmitFeedbackRequest(
+            @Min(value = 1, message = "Rating must be at least 1")
+            @Max(value = 5, message = "Rating cannot exceed 5")
             int rating,
             Integer npsScore,
             String category,
+            @Size(max = 2000, message = "Feedback message cannot exceed 2000 characters")
             String message,
             String source,
             Integer solutionQuality,

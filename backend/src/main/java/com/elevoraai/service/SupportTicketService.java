@@ -127,7 +127,18 @@ public class SupportTicketService {
                 rs.getTimestamp("updated_at").toInstant());
     }
 
-    public record CreateTicketRequest(String subject, String description, String priority) {
+    public record CreateTicketRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Subject is required")
+            @jakarta.validation.constraints.Size(max = 255, message = "Subject cannot exceed 255 characters")
+            String subject,
+
+            @jakarta.validation.constraints.NotBlank(message = "Description is required")
+            @jakarta.validation.constraints.Size(max = 4000, message = "Description cannot exceed 4000 characters")
+            String description,
+
+            @jakarta.validation.constraints.NotBlank(message = "Priority is required")
+            String priority
+    ) {
     }
 
     public record TicketResponse(

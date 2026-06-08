@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
+  <defs>
+    <linearGradient id="elevora-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e05c3a" />
+      <stop offset="100%" stop-color="#f07a55" />
+    </linearGradient>
+  </defs>
+  <rect width="24" height="24" rx="6" fill="url(#elevora-grad)"/>
+  <text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" font-family="'Space Grotesk', sans-serif" font-weight="900" font-size="14" fill="white">E</text>
+</svg>

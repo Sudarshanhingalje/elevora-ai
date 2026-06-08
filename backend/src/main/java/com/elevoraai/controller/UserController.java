@@ -7,6 +7,7 @@ import com.elevoraai.service.UserService.NotificationPrefsRequest;
 import com.elevoraai.service.UserService.NotificationPrefsResponse;
 import com.elevoraai.service.UserService.UpdateProfileRequest;
 import com.elevoraai.service.UserService.UserProfileResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +36,7 @@ public class UserController {
     @PutMapping
     public UserProfileResponse updateProfile(
             @AuthenticationPrincipal JwtPrincipal principal,
-            @RequestBody UpdateProfileRequest request) {
+            @Valid @RequestBody UpdateProfileRequest request) {
         return userService.updateProfile(principal.tenantId(), principal.userId(), request);
     }
 
@@ -43,7 +44,7 @@ public class UserController {
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal JwtPrincipal principal,
-            @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(principal.tenantId(), principal.userId(), request);
         return ResponseEntity.noContent().build();
     }
@@ -62,3 +63,4 @@ public class UserController {
         return userService.saveNotificationPrefs(principal.tenantId(), principal.userId(), request);
     }
 }
+

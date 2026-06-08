@@ -51,6 +51,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
+    private final UserLocationService userLocationService;
     private final RestClient restClient;
     private final String mailFrom;
     private final String googleClientId;
@@ -67,6 +68,7 @@ public class AuthService {
             JwtUtil jwtUtil,
             JavaMailSender mailSender,
             StringRedisTemplate redisTemplate,
+            UserLocationService userLocationService,
             @Value("${app.mail.from:no-reply@elevora.ai}") String mailFrom,
             @Value("${app.oauth.google.client-id:}") String googleClientId,
             @Value("${app.oauth.google.client-secret:}") String googleClientSecret,
@@ -80,6 +82,7 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
+        this.userLocationService = userLocationService;
         this.restClient = RestClient.create();
         this.mailFrom = mailFrom;
         this.googleClientId = googleClientId;
@@ -131,6 +134,7 @@ public class AuthService {
         Long userId = requireGeneratedId(keyHolder, "user");
         sendOtpEmail(email, otp, "Verify your Elevora AI account");
         logActivity(tenantId, userId, "AUTH_REGISTER", "users", userId, ipAddress);
+        userLocationService.recordLocation(tenantId, userId, ipAddress);
 
         return createTokens(userId, tenantId, email, USER_ROLE, false);
     }
@@ -161,6 +165,7 @@ public class AuthService {
 
         clearFailedLoginCounter(tenantSlug, email, ipAddress);
         logActivity(tenantId, user.id(), "AUTH_LOGIN_SUCCESS", "users", user.id(), ipAddress);
+        userLocationService.recordLocation(tenantId, user.id(), ipAddress);
         return createTokens(user.id(), tenantId, user.email(), user.role(), user.verified());
     }
 
@@ -291,6 +296,7 @@ public class AuthService {
                 tenantId,
                 email);
         logActivity(tenantId, user.id(), "AUTH_OAUTH_" + normalizedProvider.toUpperCase(Locale.ROOT), "users", user.id(), ipAddress);
+        userLocationService.recordLocation(tenantId, user.id(), ipAddress);
         return createTokens(user.id(), tenantId, email, user.role(), true);
     }
 
