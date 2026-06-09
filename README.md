@@ -96,6 +96,12 @@ npm run dev
 | `N8N_ENCRYPTION_KEY` | Yes | Yes | n8n credential encryption key |
 | `GRAFANA_ADMIN_PASSWORD` | Yes | Yes | Grafana admin password |
 
+
+
+<img width="2611" height="2536" alt="db" src="https://github.com/user-attachments/assets/0cead333-c028-4932-b281-a9374be0c434" />
+[database_schmena.pdf](https://github.com/user-attachments/files/28737482/database_schmena.pdf)
+
+
 ## Security Rules
 
 - Store JWT only in HTTP-only cookies.
